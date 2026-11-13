@@ -64,5 +64,7 @@ Apple 在 BSD/VFS、pmap、调度、persona、jetsam 上都动了。`ios17/REBAS
 ## 来源与许可
 
 上游 HakiOS：<https://github.com/oosexgang/hakios-xnu-kernel>（XNU 派生物 APSL-2.0，其余 MIT）。
-本仓库里的 `ios17/hakios-xnu-10002.1.13.patch` 是派生作品，同样 APSL-2.0；`prebuilt/device-tree.dtb`
-是这台手机自己的设备树，不含任何 Apple 或厂商固件。厂商固件永远不进仓库（`pull-firmware.sh` 自己拉）。
+本仓库自己的文件（docs、tools、configs、soc、uefi、脚本）是 MIT，见 `LICENSE`；
+`ios17/hakios-xnu-10002.1.13.patch` 是 XNU 的派生作品，APSL-2.0，见 `LICENSE.APSL`；
+第三方与"什么不在这里"见 `NOTICE`。`prebuilt/device-tree.dtb` 是这台手机自己的设备树，
+不含任何 Apple 或厂商固件。厂商固件永远不进仓库（`pull-firmware.sh` 自己拉）。

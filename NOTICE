@@ -1,0 +1,19 @@
+HakiOS port of the OnePlus 8T (KB2000, SM8250 "kona") — NOTICE
+
+This repository is a device port for HakiOS:
+  HakiOS — https://github.com/oosexgang/hakios-xnu-kernel (MIT, and APSL-2.0 for its XNU work)
+The kernel patch here is that project's work rebased onto xnu-10002.1.13 (iOS 17.0.0):
+  XNU — https://github.com/apple-oss-distributions/xnu (Apple Public Source License 2.0)
+  Theos — https://github.com/theos/theos and https://github.com/theos/sdks (MIT and Apple's SDK terms)
+  Mu-Silicium — https://github.com/Project-Silicium/Mu-Silicium (the UEFI HakiOS starts from; not
+  distributed here: uefi/apply.sh fetches it)
+
+What is not here, on purpose:
+  - no Apple binary (the XNU user space, the iPhone firmware and the IPSW are yours: ios17/version.env
+    names the build, sysimage/unpack.sh of the common tree unpacks it)
+  - no vendor firmware and no vendor UEFI driver (pull-firmware.sh takes them from your own phone)
+  - no decryption key and no circumvention: nothing here defeats a protection.
+
+Trademarks belong to their owners. This is not affiliated with or endorsed by Apple, OnePlus or
+Qualcomm; "Darwin", "XNU", "iPhone", "OnePlus" and "Snapdragon" are named only to describe what the
+code works with.
