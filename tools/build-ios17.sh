@@ -24,6 +24,33 @@ KERNEL=$TREE/BUILD/obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837
 
 fail() { echo "build-ios17: $*" >&2; exit 1; }
 
+if [ "${1:-}" = --check ]; then
+	bad=0
+	say() { # say WHAT IS-OK
+		local what=$1; shift
+		if "$@" >/dev/null 2>&1; then echo "  ok    $what"; else echo "  MISS  $what"; bad=1; fi
+	}
+	echo "build-ios17 --check:"
+	say "clang" clang --version
+	say "lld (ld64.lld or ld.lld)" sh -c 'command -v ld64.lld || command -v ld.lld'
+	say "make" make --version
+	say "python3" python3 --version
+	say "git" git --version
+	say "flex" flex --version
+	say "bison" bison --version
+	say "m4" m4 --version
+	say "perl" perl -v
+	say "7z (or 7zz)" sh -c 'command -v 7z || command -v 7zz'
+	say "theos cctools ld" test -x "${THEOS:-$HOME/theos}/toolchain/linux/iphone/bin/ld"
+	say "theos SDK (iPhoneOS17.0.sdk or a symlink to it)" test -d "${THEOS:-$HOME/theos}/sdks/iPhoneOS17.0.sdk"
+	say "kernel tree xnu-src/xnu-10002.1.13" test -d "$TREE"
+	say "SDK overlay $SDK" test -d "$SDK"
+	echo "  cpu: $(nproc 2>/dev/null || echo '?') cores; memory: $(awk '/MemTotal/ {printf "%.0f GB", $2/1048576}' /proc/meminfo 2>/dev/null || echo '?'); free disk here: $(df -h . 2>/dev/null | awk 'NR==2 {print $4}')"
+	[ "$bad" -eq 0 ] || { echo "build-ios17 --check: something above is MISSING (docs/building-ios17.md says how to install it)" >&2; exit 1; }
+	echo "build-ios17 --check: everything the build needs is here"
+	exit 0
+fi
+
 [ -d "$TREE" ] || fail "no $TREE: run devices/oneplus8t/ios17/apply.sh first"
 [ -d "$SDK" ] || fail "no $SDK: run xnu-deps/setup.sh --stage1 with the 17.0 SDK names (docs/building-ios17.md, step 3 and 5)"
 [ -x "${THEOS:-$HOME/theos}/toolchain/linux/iphone/bin/ld" ] || fail "no theos cctools at ${THEOS:-$HOME/theos}/toolchain/linux/iphone/bin/ld"
