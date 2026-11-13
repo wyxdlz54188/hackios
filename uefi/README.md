@@ -33,6 +33,26 @@ cd ..
 **算完的标志**：`./xl screenshot` 截到 HakiOS 的 logo，`./xl log` 有 UEFI 的第一行日志
 `HakiOS UEFI (Mu-Silicium) for OnePlus 8T`，以及 loader 的 banner。
 
+## 第一次上机（2026-11-13）：还没成功，但知道卡在哪
+
+| 步骤 | 结果 |
+|---|---|
+| Mu-Silicium 的 kebab 平台 | **编出来了**：`Build/kebabPkg/RELEASE_CLANGPDB/FV/SILICIUM_UEFI.fd`，3 145 728 字节（= `kebab.toml` 的 0x300000） |
+| `BootShim.bin` | 编出来了（112 字节，`FD_BASE=0x9FC00000`、`FD_SIZE=0x300000`、`PAYLOAD_BASE=0xF0000000`） |
+| 启动镜像 | `uefi/mkimg.py` 打包：gzip(BootShim + FD + XNUP payload) + 本机 DTB，`mkbootimg --header_version 1`，1 812 480 字节 |
+| `fastboot boot` | 上传成功（1770 KB，0.07 s），手机随后**掉进 Qualcomm HS-USB Diagnostics 900E**（`VID_05C6 PID_900E`），fastboot/adb 都消失；长按电源 15 秒回到 Android |
+
+两点判断：
+
+1. 那一次用的是**原版 Mu-Silicium**（没打 HakiOS 的补丁），所以它的 BootManagerLib 不会去找
+   XNUP 容器里的 loader —— 掉进 900E 不奇怪，但也说明 UEFI 这一步还没被验证过。
+2. 要验证得用 HakiOS 的 UEFI：`Mu-Silicium` 在 `uefi/BASE` 那个 commit 上 + `hakios.patch` + `files/`。
+   这条路目前卡在两个环境问题上（不是代码）：`Mu_Basecore/.../libspdm` 下 openssl 的 commit 拉不下来，
+   以及 `stuart_update` 说外部依赖过期；换目录重新 clone 也一样。
+
+**下一步**：WSL 恢复后，用 `build_uefi.py -d kebab -s`（跳过外部依赖检查）配合一个干净的 BASE 树再试；
+再不行就把 `libspdm` 子树从 submodule 里摘掉（SPDM 与 kebab 的启动无关）。
+
 ## 内存映射：kebab 的 vs 本机设备树
 
 `tools/check-uefi-map.py` 把两边逐段比较（`docs/uefi-map-report.md` 是这次运行的完整输出）：
