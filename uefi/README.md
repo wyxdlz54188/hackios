@@ -73,6 +73,23 @@ cd ..
 2. `xnu-stub-dtb.img`（只有 `b .`）—— 判断交接本身。
 3. `xnu-oneplus8t-hakios.img`（完整：UEFI + loader）—— 前两个都活着时才轮到它。
 
+### 二分的第一个结果（2026-11-13 傍晚）
+
+`xnu-hakios-nopayload-v1dtb.img`（**只有 UEFI，没有 loader**）被 ABL 接受，然后：
+
+```
+t=1  fastboot 设备出现，序列号 ????????????   <- UEFI 的 USB 栈起来了
+t=2  消失
+t=3  900E，屏幕全黑
+```
+
+结论：ABL→镜像的交接没问题（boot.img 格式、FD 基址、BootShim 都不再是嫌疑）；**崩在 UEFI 里**，
+USB 初始化之后约 3 秒，还没到显示初始化（所以黑屏），loader 根本没参与。
+
+下一步只剩一个不编译的对照：把第一份镜像里的**原版 Mu-Silicium FD** 抽出来（`dd` + `gunzip` +
+`mkbootimg` 重新打包，不编译），做一个"原版 UEFI、无 payload"的镜像 —— 若它也崩，是这个 kebab 平台
+在这台 12 GB 的 KB2000 上不行；若它活着，则是 HakiOS 的 BootManager/loader 补丁崩的。
+
 ## 内存映射：kebab 的 vs 本机设备树
 
 `tools/check-uefi-map.py` 把两边逐段比较（`docs/uefi-map-report.md` 是这次运行的完整输出）：
