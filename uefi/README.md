@@ -90,6 +90,38 @@ USB 初始化之后约 3 秒，还没到显示初始化（所以黑屏），load
 `mkbootimg` 重新打包，不编译），做一个"原版 UEFI、无 payload"的镜像 —— 若它也崩，是这个 kebab 平台
 在这台 12 GB 的 KB2000 上不行；若它活着，则是 HakiOS 的 BootManager/loader 补丁崩的。
 
+### 根因（读源码读出来的，2026-11-13）
+
+黑屏 + 900E 的原因在 HakiOS 自己的 stage-0 loader（`Silicon/Silicium/SiliciumPkg/Library/BootManagerLib/XnuLoader.c`）：
+
+```c
+STATIC VOID StartPayloadLoader (VOID) {
+  XNU_PAYLOAD_HEADER *Header = (XNU_PAYLOAD_HEADER *)XNU_PAYLOAD_BASE;   // 0xF0000000
+  ...
+  if (AsciiStrnCmp (Entry->Name, "loader.efi", sizeof (Entry->Name)) == 0) { ... }
+}
+```
+
+两处：
+
+1. **payload 的条目名必须是 `loader.efi`**。我们的镜像里是 `loader=`（`mkpayload.py loader=xnuloader/loader.efi`），
+   名字对不上 → UEFI **不会启动真正的 loader**，直接掉进 stage-0 的诊断路径。
+2. 诊断路径里 `LogPayload()` 无条件读 `*(0xF0000000)`，`LogPersistence()` 还写到
+   `0xF0000000 + 4 MB - 4 KB`。这台手机在这个窗口没有映射内存（HakiOS 自己的注释也写了 IMEM/watchdog
+   的 MMIO 读会触发同步异常）→ **同步异常 → 900E**。所以「不带 payload 的那次」必崩；「带 payload 但名字错」
+   的那次也会走到同一个坑里。屏幕全黑是因为 stage-0 故意不显示任何东西（它只往 `logdump` 分区写日志）。
+
+修法（`uefi/fixes/`）：
+
+- `xnuloader-payload-window.diff`：给 `XnuLoader.c` 加 `PayloadWindowMapped()`（查
+  `GetMemoryMap`），`LogPayload`/`LogPersistence`/`StartPayloadLoader` 在碰这块内存之前先问它；
+  没有 payload 就记一句然后照常复位，不再崩。
+- `uefi/mkimg.py`：自己构造 XNUP payload，条目名固定 `loader.efi`；用外部 `--payload` 时也检查
+  第一个条目名，不是 `loader.efi` 就拒绝打包。
+
+**还没做的**：把上面的 diff 打进 `hakios-uefi` 的 `files/`，重新编 UEFI（需要 Mu-Silicium 在 BASE
+的树），再打镜像上机。
+
 ## 内存映射：kebab 的 vs 本机设备树
 
 `tools/check-uefi-map.py` 把两边逐段比较（`docs/uefi-map-report.md` 是这次运行的完整输出）：

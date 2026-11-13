@@ -1,0 +1,94 @@
+From: the OnePlus 8T port
+Subject: [PATCH] XnuLoader: do not touch the payload region before it is known to be mapped
+
+The stage-0 loader reads the payload's header at XNU_PAYLOAD_BASE (0xF0000000) unconditionally, and
+LogPersistence() writes four bytes at XNU_PAYLOAD_BASE + XNU_PAYLOAD_MAX_SIZE - 4 KB. On a phone
+whose firmware leaves that address unmapped -- the OnePlus 8T does -- the first of those accesses is a
+synchronous exception inside the UEFI: the screen stays black, the logdump partition is never written,
+and the device falls into Qualcomm's 900E diagnostics mode. (HakiOS's own comment in LogPersistence
+already notes that an MMIO read of the IMEM/watchdog blocks took a synchronous exception on this
+platform.)
+
+This asks the firmware's memory map whether the payload window is there, and only then reads or writes
+it. With a payload the loader behaves as before; without one the no-payload case logs that fact and
+goes on to the reset instead of dying.
+
+--- a/Silicon/Silicium/SiliciumPkg/Library/BootManagerLib/XnuLoader.c
++++ b/Silicon/Silicium/SiliciumPkg/Library/BootManagerLib/XnuLoader.c
+@@ RunPayloadLoader
++STATIC
++BOOLEAN
++PayloadWindowMapped (
++  VOID
++  )
++{
++  EFI_STATUS             Status;
++  EFI_MEMORY_DESCRIPTOR *Map;
++  UINTN                  MapSize = 0;
++  UINTN                  MapKey;
++  UINTN                  DescSize;
++  UINT32                 DescVersion;
++  BOOLEAN                Found = FALSE;
++
++  Status = gBS->GetMemoryMap (&MapSize, NULL, &MapKey, &DescSize, &DescVersion);
++  if (Status != EFI_BUFFER_TOO_SMALL) {
++    return FALSE;
++  }
++
++  MapSize += SIZE_4KB;
++  Map      = AllocatePool (MapSize);
++  if (Map == NULL) {
++    return FALSE;
++  }
++
++  if (!EFI_ERROR (gBS->GetMemoryMap (&MapSize, Map, &MapKey, &DescSize, &DescVersion))) {
++    UINT64 NeedStart = (UINT64)XNU_PAYLOAD_BASE;
++    UINT64 NeedEnd   = NeedStart + XNU_PAYLOAD_MAX_SIZE;
++
++    for (UINTN Offset = 0; Offset < MapSize; Offset += DescSize) {
++      EFI_MEMORY_DESCRIPTOR *Desc = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
++      UINT64                 Start = Desc->PhysicalStart;
++      UINT64                 End   = Start + EFI_PAGES_TO_SIZE (Desc->NumberOfPages);
++
++      if (NeedStart >= Start && NeedEnd <= End) {
++        Found = TRUE;
++        break;
++      }
++    }
++  }
++
++  FreePool (Map);
++  return Found;
++}
++
++STATIC
++VOID
++LogPayload (
++  VOID
++  )
++{
++  Log ("[payload]\n");
++  Log ("window=%016lx+%08x mapped=%d\n", (UINT64)XNU_PAYLOAD_BASE, XNU_PAYLOAD_MAX_SIZE,
++       PayloadWindowMapped ());
++}
++
++STATIC
++VOID
++LogPersistence (
++  VOID
++  )
++{
++  UINT32 *Ram;
++
++  Log ("[persistence]\n");
++  if (!PayloadWindowMapped ()) {
++    Log ("window not mapped; skipped\n");
++    return;
++  }
++
++  Ram = (UINT32 *)(UINTN)(XNU_PAYLOAD_BASE + XNU_PAYLOAD_MAX_SIZE - SIZE_4KB);
++  Log ("ram_before=%08x %08x\n", Ram[0], Ram[1]);
++  Ram[1] = (Ram[0] == XNU_MARKER_MAGIC) ? Ram[1] + 1 : 1;
++  Ram[0] = XNU_MARKER_MAGIC;
++  Log ("ram_after=%08x %08x\n", Ram[0], Ram[1]);
++}
