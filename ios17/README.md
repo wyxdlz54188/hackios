@@ -26,6 +26,17 @@ HAKIOS=$PWD devices/oneplus8t/ios17/apply.sh
 `apply.sh` 依赖公共仓库的两个东西，缺了会明说：`tools/hakios-config.py` 生成的
 `config/MASTER.hakios`、`bsd/dev/hakios.drivers.h`，以及 `xnu/hfs/hfs.sh` 的 HFS Plus。
 
+## 验证（不需要编译就能跑的）
+
+```sh
+tools/check-ios17-tree.py            # 默认看 xnu-src/xnu-10002.1.13
+```
+
+它扫整棵树，看还有没有调用 17.0 删掉/改签名的那几个 API：`UIO_STACKBUF`、
+`set_security_token_task_internal`、`persona_proc_adopt(..., cred)`、`configure_misc_apple_regs()`，
+以及那一条 `ios17 TODO(port)` 是否还在原处。在 `ios17/apply.sh` 建出来的树上跑是干净的
+（3758 个源文件，5 项都符合）。改驱动之后也该再跑一次。
+
 ## 状态
 
 - 补丁：**在干净的 `xnu-10002.1.13` 上 `git apply --check` 通过**；变基过程与每一处取舍有记录。
