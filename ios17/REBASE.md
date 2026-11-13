@@ -151,8 +151,10 @@ panic 在 `mbuf_mtypes_sync()`。17.0 把它改成整型比较（`(vm_address_t)
 
 ## 五、还没做的（按优先级）
 
-1. **编一遍**。需要 Linux + clang/lld + theos（`xnu-deps/setup.sh`），SDK overlay 与两个外部库要按 10002
-   重做（`--rebuild-libs`）；50 个驱动对 17 的编译没有人验证过。变基只保证"打得上"，不保证"编得过"。
+1. **编一遍**。第一次真编（2026-11-13，WSL/Ubuntu/clang 21）走到了 904 个编译单元、696 个 `.o`，
+   停在两个 iOS 17 新依赖上：`<TrustCache/API.h>`（Apple 闭源的 libtrustcache 接口，任何 SDK 都没有）
+   和新增的 DriverKit 类 `IOExtensiblePaniclog`（需要真的 iig 输出）。编译器已经指出的语义错误
+   （`pmap.h` 两个 `reserved12`）修在 `fixes/pmap.h.patch`。全部细节与下一步：**`BUILD-STATUS.md`**。
 2. **jetsam 的 `sane_size` 基准**（第二节第 3 条）。
 3. **amcc / PPL**（第二节第 5 条）。
 4. **HFS Plus**：`apply.sh` 需要 `HAKIOS=/path/to/hakios` 才会把 `xnu/hfs/hfs.sh put` 跑起来。

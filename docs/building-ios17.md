@@ -174,3 +174,25 @@ cp hakios-kernel /mnt/e/HackIOS/prebuilt/            # 想留在 Windows 侧的�
 ```
 
 然后才能在手机上跑（`./xl enter`、`make phone`），见公共仓库的 `docs/getting-started/phone.md`。
+
+## 8. 实测记录（2026-11-13，这台机器）
+
+第一次真编的结果与卡点写在 `ios17/BUILD-STATUS.md`。和上面几节不同的地方，都是实测出来的：
+
+| 上面写的 | 实测要这样 |
+|---|---|
+| `sudo apt install ...` | 还要 **`uuid-dev libelf-dev`**：`SETUP/decomment` 要 `uuid/uuid.h` |
+| theos 的 `sdks/iPhoneOS17.0.sdk` | **`github.com/theos/sdks` 没有 17.0**，最高 16.5；先用 16.5 的 SDK 编 17 的内核（`XNU_SDK_VERSION=16.5`），`xnu-env.sh` 的名字也就不用改 |
+| `xnu-deps/setup.sh --stage1` | 它会拉 6 个 git 仓库，走代理时 GnuTLS 常掉；先带重试地预取一遍（`xnu-deps/<name>` 有 git HEAD 它就会跳过） |
+| `xnu-deps/setup.sh --stage2` | 要 `RC_DARWIN_KERNEL_VERSION=10002.1.13`，否则 "Could not determine xnu version from SDK or KDK" |
+| iig | 17 新增的 DriverKit 类（`IOExtensiblePaniclog`）不在 13.3 SDK 里，`xnu-deps/host/bin/iig` 要让它从 `.iig` 生成包装头（`fixes/README.md`） |
+
+网络上的一个办法：Windows 的代理只听 `127.0.0.1`，WSL 到不了。用一个 TCP 中继把
+`0.0.0.0:7891` 转到 `127.0.0.1:7890`（Node 二十行），WSL 里
+`export https_proxy=http://$(ip route show default | awk '{print $3}'):7891`，git 与 curl 就都通了。
+
+```sh
+# 编之前先体检
+HAKIOS=$PWD devices/oneplus8t/tools/build-ios17.sh --check
+```
+
