@@ -41,7 +41,7 @@ sec "gpu"
 run "cat /sys/class/kgsl/kgsl-3d0/gpu_model"
 
 sec "device tree: the nodes this port reads"
-run "cat /sys/firmware/fdt" >/dev/null 2>&1 && echo "the tree is readable; use --dtb to save it" || echo "the tree is root-only (this unit is)"
+run "cat /sys/firmware/fdt" >/dev/null 2>&1 && echo "the tree is readable (through su; the shell user alone is refused on this unit)" || echo "the tree is root-only (this unit is)"
 
 if [ "${1:-}" = "--dtb" ]; then
 	sec "device tree -> prebuilt/device-tree.dtb"
