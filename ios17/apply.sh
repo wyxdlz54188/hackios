@@ -22,9 +22,16 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 URL_OVERRIDE=${XNU_URL:-}
 . "$HERE/version.env"
 [ -n "$URL_OVERRIDE" ] && XNU_URL=$URL_OVERRIDE
-DIR=${1:-$HERE/../xnu-src/$XNU_TAG}
+# the common tree: the nearest directory above this one that has the tools (this repository lives in
+# devices/<name>/ of it, but nothing here depends on that name)
+ROOT=$HERE
+while [ ! -f "$ROOT/tools/hakios-config.py" ] && [ "$(dirname "$ROOT")" != "$ROOT" ]; do
+	ROOT=$(dirname "$ROOT")
+done
+[ -f "$ROOT/tools/hakios-config.py" ] || { echo "apply.sh: no common tree above $HERE (no tools/hakios-config.py)" >&2; exit 1; }
+DIR=${1:-$ROOT/xnu-src/$XNU_TAG}
 PATCH=$HERE/hakios-$XNU_TAG.patch
-HAKIOS=${HAKIOS:-$(cd "$HERE/../../.." && pwd)}
+HAKIOS=${HAKIOS:-$ROOT}
 
 [ -e "$DIR" ] && { echo "apply.sh: $DIR already exists; not touching it" >&2; exit 1; }
 [ -s "$PATCH" ] || { echo "apply.sh: no $PATCH" >&2; exit 1; }

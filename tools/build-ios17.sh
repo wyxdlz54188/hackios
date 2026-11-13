@@ -19,7 +19,10 @@ HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
 [ -f "$ROOT/tools/make-kernel.sh" ] || { echo "build-ios17: $ROOT is not the common tree (no tools/make-kernel.sh)" >&2; exit 1; }
 TREE=$ROOT/xnu-src/xnu-10002.1.13
-SDK=$ROOT/xnu-deps/sdk/iPhoneOS17.0.xnu.sdk
+# The SDK the kernel is compiled against. 17.0 is the target; github.com/theos/sdks publishes up to
+# 16.5, so on a machine with only that one, run with XNU_SDK_VERSION=16.5 and say so in the log.
+: "${XNU_SDK_VERSION:=17.0}"
+SDK=$ROOT/xnu-deps/sdk/iPhoneOS${XNU_SDK_VERSION}.xnu.sdk
 KERNEL=$TREE/BUILD/obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837
 
 fail() { echo "build-ios17: $*" >&2; exit 1; }
@@ -42,7 +45,7 @@ if [ "${1:-}" = --check ]; then
 	say "perl" perl -v
 	say "7z (or 7zz)" sh -c 'command -v 7z || command -v 7zz'
 	say "theos cctools ld" test -x "${THEOS:-$HOME/theos}/toolchain/linux/iphone/bin/ld"
-	say "theos SDK (iPhoneOS17.0.sdk or a symlink to it)" test -d "${THEOS:-$HOME/theos}/sdks/iPhoneOS17.0.sdk"
+	say "theos SDK (iPhoneOS${XNU_SDK_VERSION}.sdk)" test -d "${THEOS:-$HOME/theos}/sdks/iPhoneOS${XNU_SDK_VERSION}.sdk"
 	say "kernel tree xnu-src/xnu-10002.1.13" test -d "$TREE"
 	say "SDK overlay $SDK" test -d "$SDK"
 	echo "  cpu: $(nproc 2>/dev/null || echo '?') cores; memory: $(awk '/MemTotal/ {printf "%.0f GB", $2/1048576}' /proc/meminfo 2>/dev/null || echo '?'); free disk here: $(df -h . 2>/dev/null | awk 'NR==2 {print $4}')"
