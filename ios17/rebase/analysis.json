@@ -1,0 +1,519 @@
+{
+ "patch_files": 82,
+ "added_files": [
+  "bsd/hfs/hfs_builtin.c",
+  "bsd/kern/kern_minimac.c",
+  "bsd/miscfs/apfs/apfs.h",
+  "bsd/miscfs/apfs/apfs_deflate.c",
+  "bsd/miscfs/apfs/apfs_format.h",
+  "bsd/miscfs/apfs/apfs_lib.c",
+  "bsd/miscfs/apfs/apfs_lib.h",
+  "bsd/miscfs/apfs/apfs_store.c",
+  "bsd/miscfs/apfs/apfs_store.h",
+  "bsd/miscfs/apfs/apfs_vfsops.c",
+  "bsd/miscfs/apfs/apfs_vnops.c",
+  "bsd/miscfs/apfs/apfs_write.c",
+  "bsd/miscfs/apfs/apfs_write.h",
+  "bsd/miscfs/apfs/apfs_zbitmap.c",
+  "bsd/miscfs/apfs/libdeflate/COPYING",
+  "bsd/miscfs/apfs/libdeflate/common_defs.h",
+  "bsd/miscfs/apfs/libdeflate/lib/adler32.c",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/adler32_impl.h",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/cpu_features.h",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/crc32_impl.h",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/crc32_pmull_helpers.h",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/crc32_pmull_wide.h",
+  "bsd/miscfs/apfs/libdeflate/lib/arm/matchfinder_impl.h",
+  "bsd/miscfs/apfs/libdeflate/lib/cpu_features_common.h",
+  "bsd/miscfs/apfs/libdeflate/lib/decompress_template.h",
+  "bsd/miscfs/apfs/libdeflate/lib/deflate_constants.h",
+  "bsd/miscfs/apfs/libdeflate/lib/deflate_decompress.c",
+  "bsd/miscfs/apfs/libdeflate/lib/lib_common.h",
+  "bsd/miscfs/apfs/libdeflate/lib/zlib_constants.h",
+  "bsd/miscfs/apfs/libdeflate/lib/zlib_decompress.c",
+  "bsd/miscfs/apfs/libdeflate/libdeflate.h",
+  "bsd/miscfs/apfs/libzbitmap/libzbitmap.c",
+  "bsd/miscfs/apfs/libzbitmap/libzbitmap.h",
+  "bsd/miscfs/ramfs/ramfs.c",
+  "bsd/pthread/pthread_kext_static.c",
+  "bsd/sys/hakios.apfs_check.h",
+  "bsd/sys/hakios.audio.h",
+  "bsd/sys/hakios.camera.h",
+  "bsd/sys/hakios.input.h",
+  "bsd/sys/hakios.ipa.h",
+  "bsd/sys/hakios.lx.h",
+  "bsd/sys/hakios.nas.h",
+  "bsd/sys/hakios.net.h",
+  "bsd/sys/hakios.qmi.h",
+  "bsd/sys/hakios.qrtr.h",
+  "bsd/sys/hakios.sparse.h",
+  "bsd/sys/hakios.sta.h",
+  "bsd/sys/hakios.version.h",
+  "bsd/sys/hakios.virtio_blk.h",
+  "iokit/Kernel/GenericARMPE.cpp",
+  "iokit/Kernel/MiniAppleKeyStore.cpp",
+  "iokit/Kernel/MiniDrivers.h",
+  "iokit/Kernel/MiniIOMobileFramebuffer.cpp",
+  "iokit/Kernel/MiniIONetworkStack.cpp",
+  "iokit/Kernel/MiniIOSurface.cpp",
+  "iokit/Kernel/MiniIOSurface.h",
+  "libkern/amfi/miniamfi.c",
+  "libkern/amfi/miniamfi_entitlements.cpp",
+  "osfmk/arm64/generic_arm64_support.c",
+  "osfmk/arm64/gic_v3_irq.c",
+  "osfmk/arm64/kpc.c",
+  "osfmk/arm64/loader_return.c",
+  "osfmk/arm64/ppl/sart.h",
+  "osfmk/arm64/ppl/uat.h",
+  "osfmk/arm64/psci_smp.c",
+  "osfmk/arm64/psci_smp.h",
+  "osfmk/arm64/tunables/tunables.s",
+  "osfmk/arm64/user_exception_trace.c",
+  "osfmk/minicrypto/mc_aes.c",
+  "osfmk/minicrypto/mc_digests.c",
+  "osfmk/minicrypto/mc_provider.c",
+  "osfmk/minicrypto/minicrypto.h"
+ ],
+ "collisions": [],
+ "churn": [
+  {
+   "file": "bsd/kern/uipc_syscalls.c",
+   "added": "830",
+   "deleted": "130"
+  },
+  {
+   "file": "bsd/vfs/vfs_syscalls.c",
+   "added": "519",
+   "deleted": "438"
+  },
+  {
+   "file": "osfmk/arm/pmap/pmap.c",
+   "added": "449",
+   "deleted": "131"
+  },
+  {
+   "file": "bsd/kern/kern_memorystatus.c",
+   "added": "353",
+   "deleted": "158"
+  },
+  {
+   "file": "bsd/vfs/vfs_subr.c",
+   "added": "290",
+   "deleted": "94"
+  },
+  {
+   "file": "osfmk/kern/sched_prim.c",
+   "added": "271",
+   "deleted": "29"
+  },
+  {
+   "file": "bsd/kern/kern_exec.c",
+   "added": "117",
+   "deleted": "84"
+  },
+  {
+   "file": "iokit/Kernel/IOService.cpp",
+   "added": "113",
+   "deleted": "38"
+  },
+  {
+   "file": "osfmk/kern/sched_clutch.c",
+   "added": "73",
+   "deleted": "77"
+  },
+  {
+   "file": "bsd/vm/vm_unix.c",
+   "added": "117",
+   "deleted": "19"
+  },
+  {
+   "file": "iokit/Kernel/IOUserClient.cpp",
+   "added": "82",
+   "deleted": "45"
+  },
+  {
+   "file": "iokit/Kernel/IOPMrootDomain.cpp",
+   "added": "106",
+   "deleted": "10"
+  },
+  {
+   "file": "osfmk/arm64/machine_routines.c",
+   "added": "67",
+   "deleted": "22"
+  },
+  {
+   "file": "makedefs/MakeInc.def",
+   "added": "67",
+   "deleted": "13"
+  },
+  {
+   "file": "osfmk/kern/debug.c",
+   "added": "70",
+   "deleted": "7"
+  },
+  {
+   "file": "osfmk/kern/kalloc.h",
+   "added": "21",
+   "deleted": "55"
+  },
+  {
+   "file": "osfmk/arm64/cpu.c",
+   "added": "43",
+   "deleted": "22"
+  },
+  {
+   "file": "bsd/nfs/nfs_serv.c",
+   "added": "47",
+   "deleted": "15"
+  },
+  {
+   "file": "osfmk/kern/work_interval.c",
+   "added": "52",
+   "deleted": "8"
+  },
+  {
+   "file": "bsd/vfs/vfs_attrlist.c",
+   "added": "46",
+   "deleted": "13"
+  },
+  {
+   "file": "osfmk/kern/thread.c",
+   "added": "32",
+   "deleted": "16"
+  },
+  {
+   "file": "osfmk/arm/pmap/pmap.h",
+   "added": "37",
+   "deleted": "6"
+  },
+  {
+   "file": "makedefs/MakeInc.cmd",
+   "added": "38",
+   "deleted": "2"
+  },
+  {
+   "file": "bsd/kern/bsd_init.c",
+   "added": "29",
+   "deleted": "9"
+  },
+  {
+   "file": "iokit/Kernel/IOPlatformExpert.cpp",
+   "added": "34",
+   "deleted": "1"
+  },
+  {
+   "file": "osfmk/arm/model_dep.c",
+   "added": "26",
+   "deleted": "2"
+  },
+  {
+   "file": "bsd/kern/sys_generic.c",
+   "added": "14",
+   "deleted": "12"
+  },
+  {
+   "file": "bsd/vfs/vfs_vnops.c",
+   "added": "19",
+   "deleted": "7"
+  },
+  {
+   "file": "osfmk/arm/arm_init.c",
+   "added": "18",
+   "deleted": "6"
+  },
+  {
+   "file": "bsd/conf/files",
+   "added": "18",
+   "deleted": "4"
+  },
+  {
+   "file": "bsd/sys/uio_internal.h",
+   "added": "14",
+   "deleted": "6"
+  },
+  {
+   "file": "osfmk/arm64/start.s",
+   "added": "13",
+   "deleted": "7"
+  },
+  {
+   "file": "bsd/kern/kern_sig.c",
+   "added": "13",
+   "deleted": "5"
+  },
+  {
+   "file": "config/MASTER",
+   "added": "16",
+   "deleted": "1"
+  },
+  {
+   "file": "iokit/bsddev/IOKitBSDInit.cpp",
+   "added": "14",
+   "deleted": "2"
+  },
+  {
+   "file": "osfmk/kern/startup.c",
+   "added": "12",
+   "deleted": "2"
+  },
+  {
+   "file": "osfmk/console/video_console.c",
+   "added": "9",
+   "deleted": "4"
+  },
+  {
+   "file": "config/MASTER.arm64.bcm2837",
+   "added": "6",
+   "deleted": "5"
+  },
+  {
+   "file": "osfmk/kern/sched.h",
+   "added": "9",
+   "deleted": "1"
+  },
+  {
+   "file": "osfmk/kern/percpu.h",
+   "added": "5",
+   "deleted": "4"
+  },
+  {
+   "file": "pexpert/pexpert/arm64/board_config.h",
+   "added": "8",
+   "deleted": "1"
+  },
+  {
+   "file": "bsd/dev/arm/km.c",
+   "added": "1",
+   "deleted": "7"
+  },
+  {
+   "file": "bsd/vfs/vfs_quota.c",
+   "added": "4",
+   "deleted": "4"
+  },
+  {
+   "file": "iokit/conf/files",
+   "added": "6",
+   "deleted": "0"
+  },
+  {
+   "file": "security/mac_vfs_subr.c",
+   "added": "3",
+   "deleted": "3"
+  },
+  {
+   "file": "iokit/KernelConfigTables.cpp",
+   "added": "5",
+   "deleted": "0"
+  },
+  {
+   "file": "makedefs/MakeInc.top",
+   "added": "5",
+   "deleted": "0"
+  },
+  {
+   "file": "osfmk/kern/exception.c",
+   "added": "5",
+   "deleted": "0"
+  },
+  {
+   "file": "osfmk/kern/work_interval.h",
+   "added": "5",
+   "deleted": "0"
+  },
+  {
+   "file": "osfmk/conf/files",
+   "added": "3",
+   "deleted": "1"
+  },
+  {
+   "file": "osfmk/conf/files.arm64",
+   "added": "3",
+   "deleted": "0"
+  },
+  {
+   "file": "bsd/kern/decmpfs.c",
+   "added": "1",
+   "deleted": "1"
+  },
+  {
+   "file": "bsd/kern/kpi_socket.c",
+   "added": "1",
+   "deleted": "1"
+  },
+  {
+   "file": "bsd/vfs/vfs_lookup.c",
+   "added": "1",
+   "deleted": "1"
+  },
+  {
+   "file": "tools/lldbmacros/core/syntax_checker.py",
+   "added": "1",
+   "deleted": "1"
+  },
+  {
+   "file": "bsd/vfs/vfs_conf.c",
+   "added": "0",
+   "deleted": "1"
+  },
+  {
+   "file": "Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "SETUP/config/doconf",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/conf/Makefile.arm64",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/conf/Makefile.template",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/dev/arm/systemcalls.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/dev/memdev.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/kern/kern_priv.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/kern/sys_work_interval.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/miscfs/bindfs/bind_vfsops.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/miscfs/mockfs/mockfs.h",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/miscfs/mockfs/mockfs_fsnode.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "bsd/sys/disk.h",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "iokit/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "libkern/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "libkern/conf/files",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "libkern/libkern/c++/OSData.h",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "libsa/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "osfmk/arm64/corecrypto/arm64_isa_compatibility.h",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "osfmk/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "pexpert/arm/pe_fiq.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "pexpert/arm/pe_kprintf.c",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "pexpert/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "pexpert/pexpert/arm64/BCM2837.h",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "san/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  },
+  {
+   "file": "security/conf/Makefile",
+   "added": "-",
+   "deleted": "-"
+  }
+ ],
+ "apply": {
+  "returncode": 1,
+  "rejects": [
+   "bsd/kern/decmpfs.c.rej",
+   "bsd/kern/kern_exec.c.rej",
+   "bsd/kern/kern_memorystatus.c.rej",
+   "bsd/kern/kpi_socket.c.rej",
+   "bsd/kern/sys_generic.c.rej",
+   "bsd/kern/uipc_syscalls.c.rej",
+   "bsd/nfs/nfs_serv.c.rej",
+   "bsd/sys/uio_internal.h.rej",
+   "bsd/vfs/vfs_attrlist.c.rej",
+   "bsd/vfs/vfs_conf.c.rej",
+   "bsd/vfs/vfs_lookup.c.rej",
+   "bsd/vfs/vfs_quota.c.rej",
+   "bsd/vfs/vfs_subr.c.rej",
+   "bsd/vfs/vfs_syscalls.c.rej",
+   "bsd/vfs/vfs_vnops.c.rej",
+   "config/MASTER.arm64.bcm2837.rej",
+   "iokit/KernelConfigTables.cpp.rej",
+   "osfmk/arm/arm_init.c.rej",
+   "osfmk/arm64/machine_routines.c.rej",
+   "osfmk/conf/files.arm64.rej",
+   "osfmk/kern/percpu.h.rej",
+   "osfmk/kern/sched_clutch.c.rej",
+   "security/mac_vfs_subr.c.rej"
+  ],
+  "log_tail": "Rejected hunk #3.\nRejected hunk #4.\nRejected hunk #5.\nApplying patch bsd/vfs/vfs_conf.c with 1 reject...\nRejected hunk #1.\nHunk #2 applied cleanly.\nHunk #3 applied cleanly.\nHunk #4 applied cleanly.\nHunk #5 applied cleanly.\nApplying patch bsd/vfs/vfs_lookup.c with 1 reject...\nRejected hunk #1.\nApplying patch bsd/vfs/vfs_quota.c with 4 rejects...\nRejected hunk #1.\nRejected hunk #2.\nRejected hunk #3.\nRejected hunk #4.\nApplying patch bsd/vfs/vfs_subr.c with 1 reject...\nRejected hunk #1.\nApplying patch bsd/vfs/vfs_syscalls.c with 10 rejects...\nRejected hunk #1.\nRejected hunk #2.\nRejected hunk #3.\nRejected hunk #4.\nRejected hunk #5.\nRejected hunk #6.\nRejected hunk #7.\nRejected hunk #8.\nRejected hunk #9.\nRejected hunk #10.\nApplying patch bsd/vfs/vfs_vnops.c with 1 reject...\nRejected hunk #1.\nApplied patch bsd/vm/vm_unix.c cleanly.\nApplied patch config/MASTER cleanly.\nApplying patch config/MASTER.arm64.bcm2837 with 1 reject...\nRejected hunk #1.\nHunk #2 applied cleanly.\nHunk #3 applied cleanly.\nApplied patch iokit/Kernel/IOPMrootDomain.cpp cleanly.\nApplied patch iokit/Kernel/IOPlatformExpert.cpp cleanly.\nApplied patch iokit/Kernel/IOService.cpp cleanly.\nApplied patch iokit/Kernel/IOUserClient.cpp cleanly.\nApplying patch iokit/KernelConfigTables.cpp with 1 reject...\nHunk #1 applied cleanly.\nRejected hunk #2.\nApplied patch iokit/bsddev/IOKitBSDInit.cpp cleanly.\nApplied patch iokit/conf/Makefile cleanly.\nApplied patch iokit/conf/files cleanly.\nApplied patch libkern/conf/Makefile cleanly.\nApplied patch libkern/conf/files cleanly.\nApplied patch libkern/libkern/c++/OSData.h cleanly.\nApplied patch libsa/conf/Makefile cleanly.\nApplied patch makedefs/MakeInc.cmd cleanly.\nApplied patch makedefs/MakeInc.def cleanly.\nApplied patch makedefs/MakeInc.top cleanly.\nApplying patch osfmk/arm/arm_init.c with 1 reject...\nHunk #1 applied cleanly.\nHunk #2 applied cleanly.\nHunk #3 applied cleanly.\nRejected hunk #4.\nHunk #5 applied cleanly.\nHunk #6 applied cleanly.\nHunk #7 applied cleanly.\nHunk #8 applied cleanly.\nHunk #9 applied cleanly.\nHunk #10 applied cleanly.\nHunk #11 applied cleanly.\nHunk #12 applied cleanly.\nHunk #13 applied cleanly.\nHunk #14 applied cleanly.\nApplied patch osfmk/arm/model_dep.c cleanly.\nApplied patch osfmk/arm/pmap/pmap.c cleanly.\nApplied patch osfmk/arm/pmap/pmap.h cleanly.\nApplied patch osfmk/arm64/corecrypto/arm64_isa_compatibility.h cleanly.\nApplied patch osfmk/arm64/cpu.c cleanly.\nApplying patch osfmk/arm64/machine_routines.c with 1 reject...\nHunk #1 applied cleanly.\nHunk #2 applied cleanly.\nHunk #3 applied cleanly.\nHunk #4 applied cleanly.\nHunk #5 applied cleanly.\nRejected hunk #6.\nHunk #7 applied cleanly.\nHunk #8 applied cleanly.\nApplied patch osfmk/arm64/start.s cleanly.\nApplied patch osfmk/conf/Makefile cleanly.\nApplied patch osfmk/conf/files cleanly.\nApplying patch osfmk/conf/files.arm64 with 1 reject...\nRejected hunk #1.\nHunk #2 applied cleanly.\nApplied patch osfmk/console/video_console.c cleanly.\nApplied patch osfmk/kern/debug.c cleanly.\nApplied patch osfmk/kern/exception.c cleanly.\nApplied patch osfmk/kern/kalloc.h cleanly.\nApplying patch osfmk/kern/percpu.h with 1 reject...\nRejected hunk #1.\nApplied patch osfmk/kern/sched.h cleanly.\nApplying patch osfmk/kern/sched_clutch.c with 1 reject...\nRejected hunk #1.\nApplied patch osfmk/kern/sched_prim.c cleanly.\nApplied patch osfmk/kern/startup.c cleanly.\nApplied patch osfmk/kern/thread.c cleanly.\nApplied patch osfmk/kern/work_interval.c cleanly.\nApplied patch osfmk/kern/work_interval.h cleanly.\nApplied patch pexpert/arm/pe_fiq.c cleanly.\nApplied patch pexpert/arm/pe_kprintf.c cleanly.\nApplied patch pexpert/conf/Makefile cleanly.\nApplied patch pexpert/pexpert/arm64/BCM2837.h cleanly.\nApplied patch pexpert/pexpert/arm64/board_config.h cleanly.\nApplied patch san/conf/Makefile cleanly.\nApplied patch security/conf/Makefile cleanly.\nApplying patch security/mac_vfs_subr.c with 2 rejects...\nRejected hunk #1.\nRejected hunk #2.\nApplied patch tools/lldbmacros/core/syntax_checker.py cleanly.\n"
+ }
+}

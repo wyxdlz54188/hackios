@@ -1,0 +1,13 @@
+# The patch, the scripts and the configuration are LF, whoever checks them out: a patch that comes
+# back as CRLF still applies but stops matching Apple's tree byte for byte, and the scripts run on
+# Linux. The device tree is binary.
+* text=auto eol=lf
+*.patch text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.conf text eol=lf
+*.config text eol=lf
+*.args text eol=lf
+*.env text eol=lf
+*.md text eol=lf
+*.dtb binary

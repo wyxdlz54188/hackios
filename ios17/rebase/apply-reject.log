@@ -1,0 +1,894 @@
+Checking patch Makefile...
+Checking patch SETUP/config/doconf...
+Checking patch bsd/conf/Makefile...
+Checking patch bsd/conf/Makefile.arm64...
+Checking patch bsd/conf/Makefile.template...
+Checking patch bsd/conf/files...
+Hunk #1 succeeded at 111 (offset 2 lines).
+Hunk #2 succeeded at 202 (offset 2 lines).
+Hunk #3 succeeded at 458 (offset 6 lines).
+Hunk #4 succeeded at 481 (offset 6 lines).
+Checking patch bsd/dev/arm/km.c...
+Hunk #1 succeeded at 199 (offset -6 lines).
+Hunk #2 succeeded at 255 (offset -6 lines).
+Hunk #3 succeeded at 369 (offset -6 lines).
+Checking patch bsd/dev/arm/systemcalls.c...
+Checking patch bsd/dev/memdev.c...
+Checking patch bsd/kern/bsd_init.c...
+Hunk #1 succeeded at 146 (offset -1 lines).
+Hunk #2 succeeded at 503 (offset 5 lines).
+Hunk #3 succeeded at 1000 (offset 16 lines).
+Checking patch bsd/kern/decmpfs.c...
+error: while searching for:
+	const bool no_additional_data = ((cp != NULL)
+	    && (cp->cmp_type != 0)
+	    && (cp->cmp_minimal_xattr != 0));
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	decmpfs_header *hdr = NULL;
+
+	/*
+
+error: patch failed: bsd/kern/decmpfs.c:515
+Checking patch bsd/kern/kern_exec.c...
+Hunk #1 succeeded at 1159 (offset 2 lines).
+Hunk #2 succeeded at 1320 (offset 2 lines).
+Hunk #3 succeeded at 2209 (offset 6 lines).
+Hunk #4 succeeded at 2637 (offset -12 lines).
+Hunk #5 succeeded at 2757 (offset -12 lines).
+Hunk #6 succeeded at 3142 (offset -12 lines).
+Hunk #7 succeeded at 3159 (offset -12 lines).
+error: while searching for:
+	 * the kauth with a different UID/GID combo
+	 */
+	persona = persona_lookup(px_persona->pspi_id);
+	if (!persona) {
+		return ESRCH;
+	}
+
+	cred = kauth_cred_proc_ref(p);
+
+
+error: patch failed: bsd/kern/kern_exec.c:3130
+error: while searching for:
+		    px_persona->pspi_gmuid);
+	}
+
+	ret = persona_proc_adopt(p, persona, cred);
+
+	kauth_cred_unref(&cred);
+
+error: patch failed: bsd/kern/kern_exec.c:3158
+Hunk #10 succeeded at 5664 (offset -21 lines).
+Hunk #11 succeeded at 5902 (offset -21 lines).
+error: while searching for:
+	}
+
+	/* Update the process' identity version and set the security token */
+	proc_setpidversion(p, OSIncrementAtomic(&nextpidversion));
+	task_set_uniqueid(task);
+	set_security_token_task_internal(p, task);
+
+
+error: patch failed: bsd/kern/kern_exec.c:6636
+Hunk #13 succeeded at 7723 (offset -22 lines).
+Checking patch bsd/kern/kern_memorystatus.c...
+error: while searching for:
+
+/* General tunables */
+
+unsigned long delta_percentage = 5;
+unsigned long critical_threshold_percentage = 5;
+// On embedded devices with more than 3GB of memory we lower the critical percentage.
+
+error: patch failed: bsd/kern/kern_memorystatus.c:222
+error: while searching for:
+	if (delta_percentage == 0) {
+		delta_percentage = 5;
+	}
+	if (max_mem > config_jetsam_large_memory_cutoff) {
+		critical_threshold_percentage = critical_threshold_percentage_larger_devices;
+		delta_percentage = delta_percentage_larger_devices;
+	}
+
+error: patch failed: bsd/kern/kern_memorystatus.c:1365
+error: while searching for:
+		PE_get_default("kern.jetsam_idle_snapshot", &memorystatus_idle_snapshot, sizeof(memorystatus_idle_snapshot));
+	}
+
+	memorystatus_delta = (unsigned int) (delta_percentage * atop_64(max_mem) / 100);
+	memorystatus_available_pages_critical_idle_offset = (unsigned int) (idle_offset_percentage * atop_64(max_mem) / 100);
+	memorystatus_available_pages_critical_base = (unsigned int) ((critical_threshold_percentage / delta_percentage) * memorystatus_delta);
+	memorystatus_policy_more_free_offset_pages = (unsigned int) ((policy_more_free_offset_percentage / delta_percentage) * memorystatus_delta);
+	memorystatus_sysproc_aging_aggr_pages = (unsigned int) (sysproc_aging_aggr_threshold_percentage * atop_64(max_mem) / 100);
+
+	/* Set the swapin trigger in pages based on the maximum size allocated for each c_seg */
+	memorystatus_swapin_trigger_pages = (unsigned int) atop_64(memorystatus_swapin_trigger_segments * c_seg_allocsize);
+
+error: patch failed: bsd/kern/kern_memorystatus.c:1400
+Hunk #4 succeeded at 5200 (offset 88 lines).
+error: while searching for:
+	}
+
+#if VM_PRESSURE_EVENTS
+	memorystatus_available_pages_pressure = (int32_t)(pressure_threshold_percentage * (atop_64(max_mem) / 100));
+#endif
+}
+
+
+error: patch failed: bsd/kern/kern_memorystatus.c:6609
+Checking patch bsd/kern/kern_priv.c...
+Checking patch bsd/kern/kern_sig.c...
+Checking patch bsd/kern/kpi_socket.c...
+error: while searching for:
+	int error = 0;
+	user_ssize_t length = 0;
+	struct sockaddr *fromsa = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF((msg != NULL) ? msg->msg_iovlen : 0)];
+
+	if (sock == NULL) {
+		return EINVAL;
+
+error: patch failed: bsd/kern/kpi_socket.c:727
+Checking patch bsd/kern/sys_generic.c...
+error: while searching for:
+    user_addr_t bufp, user_size_t nbyte, off_t offset, int flags,
+    user_ssize_t *retval)
+{
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t uio;
+	int spacetype;
+
+
+error: patch failed: bsd/kern/sys_generic.c:303
+error: while searching for:
+read_internal(struct proc *p, int fd, user_addr_t buf, user_size_t nbyte,
+    off_t offset, int flags, user_ssize_t *retval)
+{
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t uio;
+	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
+
+
+error: patch failed: bsd/kern/sys_generic.c:350
+error: while searching for:
+    user_addr_t bufp, user_size_t nbyte, off_t offset, int flags,
+    user_ssize_t *retval)
+{
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t uio;
+	int spacetype;
+
+
+error: patch failed: bsd/kern/sys_generic.c:631
+error: while searching for:
+write_internal(struct proc *p, int fd, user_addr_t buf, user_size_t nbyte,
+    off_t offset, int flags, guardid_t *puguard, user_ssize_t *retval)
+{
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t uio;
+	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
+
+
+error: patch failed: bsd/kern/sys_generic.c:678
+Checking patch bsd/kern/sys_work_interval.c...
+Checking patch bsd/kern/uipc_syscalls.c...
+error: while searching for:
+		mbuf_t  m;
+		unsigned int    nbufs = SFUIOBUFS, i;
+		uio_t   auio;
+		uio_stackbuf_t    uio_buf[UIO_SIZEOF(SFUIOBUFS)]; /* 1 KB !!! */
+		size_t  uiolen;
+		user_ssize_t    rlen;
+		off_t   pgoff;
+
+error: patch failed: bsd/kern/uipc_syscalls.c:3561
+Checking patch bsd/miscfs/bindfs/bind_vfsops.c...
+Checking patch bsd/miscfs/mockfs/mockfs.h...
+Checking patch bsd/miscfs/mockfs/mockfs_fsnode.c...
+Checking patch bsd/nfs/nfs_serv.c...
+error: while searching for:
+	struct nfsm_chain *nmreq, nmrep;
+	mbuf_t mpath, mp;
+	uio_t auio = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(4)];
+	char *uio_bufp = &uio_buf[0];
+	int uio_buflen = UIO_SIZEOF(4);
+
+	error = 0;
+
+error: patch failed: bsd/nfs/nfs_serv.c:769
+error: while searching for:
+	struct vnode_attr vattr, *vap = &vattr;
+	off_t off;
+	uid_t saved_uid;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(0)];
+	struct nfsm_chain *nmreq, nmrep;
+
+	error = 0;
+
+error: patch failed: bsd/nfs/nfs_serv.c:917
+error: while searching for:
+	struct nfs_export *nx = NULL;
+	struct nfs_export_options *nxo = NULL;
+	uio_t auio = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	struct nfsm_chain *nmreq, nmrep;
+	__unused const int nfs_vers = nd->nd_vers;
+	assert(nd->nd_vers == NFS_VER2 || nd->nd_vers == NFS_VER3);
+
+error: patch failed: bsd/nfs/nfs_serv.c:3559
+error: while searching for:
+	struct nfs_export *nx;
+	struct nfs_export_options *nxo;
+	uio_t auio = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	int len, nlen, rem, xfer, error, attrerr;
+	int siz, count, fullsiz, eofflag, nentries;
+	u_quad_t off, toff, verf = 0;
+
+error: patch failed: bsd/nfs/nfs_serv.c:4215
+error: while searching for:
+	struct nfs_export *nx;
+	struct nfs_export_options *nxo;
+	uio_t auio = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	struct vnode_attr attr, va, *vap = &va;
+	int len, nlen, rem, xfer, error, attrerr, gotfh, gotattr;
+	int siz, dircount, maxcount, fullsiz, eofflag, dirlen, nentries, isdotdot;
+
+error: patch failed: bsd/nfs/nfs_serv.c:4462
+Checking patch bsd/sys/disk.h...
+Checking patch bsd/sys/uio_internal.h...
+error: while searching for:
+#define UIO_SIZEOF( a_iovcount ) \
+	( sizeof(struct uio) + UIO_SIZEOF_IOVS(a_iovcount) )
+
+typedef char __attribute__((aligned(_Alignof(union iovecs)))) uio_stackbuf_t;
+
+#define UIO_IS_USER_SPACE32( a_uio_t )  \
+	( (a_uio_t)->uio_segflg == UIO_USERSPACE32 || (a_uio_t)->uio_segflg == UIO_PHYS_USERSPACE32 || \
+
+error: patch failed: bsd/sys/uio_internal.h:170
+Checking patch bsd/vfs/vfs_attrlist.c...
+error: while searching for:
+setattrlist_setfinderinfo(vnode_t vp, char *fndrinfo, struct vfs_context *ctx)
+{
+	uio_t   auio;
+	uio_stackbuf_t    uio_buf[UIO_SIZEOF(1)];
+	int     error;
+
+	if ((auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE, UIO_WRITE, uio_buf, sizeof(uio_buf))) == NULL) {
+
+error: patch failed: bsd/vfs/vfs_attrlist.c:878
+error: while searching for:
+		error = 0;
+		if (vp && !is_bulk) {
+			uio_t   auio;
+			uio_stackbuf_t    uio_buf[UIO_SIZEOF(1)];
+
+			if ((auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE,
+			    UIO_READ, uio_buf, sizeof(uio_buf))) == NULL) {
+
+error: patch failed: bsd/vfs/vfs_attrlist.c:1847
+error: while searching for:
+	int             pack_invalid;
+	int             vtype = 0;
+	uio_t           auio;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	// must be true for fork attributes to be used as new common attributes
+	const int use_fork = (options & FSOPT_ATTR_CMN_EXTENDED) != 0;
+
+
+error: patch failed: bsd/vfs/vfs_attrlist.c:3120
+error: while searching for:
+    int *eofflagp)
+{
+	uio_t rdir_uio;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	size_t rdirbufsiz;
+	size_t rdirbufused;
+	int eofflag;
+
+error: patch failed: bsd/vfs/vfs_attrlist.c:3474
+error: while searching for:
+	enum uio_seg segflg;
+	int count;
+	uio_t auio = NULL;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	kauth_action_t action;
+	int eofflag;
+	uint64_t options;
+
+error: patch failed: bsd/vfs/vfs_attrlist.c:4048
+Checking patch bsd/vfs/vfs_conf.c...
+error: while searching for:
+extern  int mockfs_mountroot(mount_t, vnode_t, vfs_context_t);
+#endif /* MOCKFS */
+
+enum fs_type_num {
+	FT_NFS = 2,
+	FT_DEVFS = 19,
+
+error: patch failed: bsd/vfs/vfs_conf.c:103
+Hunk #2 succeeded at 109 (offset -14 lines).
+Hunk #3 succeeded at 196 (offset -14 lines).
+Hunk #4 succeeded at 373 (offset -14 lines).
+Hunk #5 succeeded at 417 (offset -14 lines).
+Checking patch bsd/vfs/vfs_lookup.c...
+error: while searching for:
+	int error;
+	char *cp;               /* pointer into pathname argument */
+	uio_t auio;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	int need_newpathbuf;
+	u_int linklen = 0;
+	struct componentname *cnp = &ndp->ni_cnd;
+
+error: patch failed: bsd/vfs/vfs_lookup.c:1670
+Checking patch bsd/vfs/vfs_quota.c...
+error: while searching for:
+	off_t file_size;
+	uio_t auio;
+	int error = 0;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	context.vc_thread = current_thread();
+	context.vc_ucred = qfp->qf_cred;
+
+error: patch failed: bsd/vfs/vfs_quota.c:382
+error: while searching for:
+	struct dqfilehdr header;
+	struct vfs_context context;
+	uio_t auio;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE, UIO_READ,
+	    &uio_buf[0], sizeof(uio_buf));
+
+error: patch failed: bsd/vfs/vfs_quota.c:440
+error: while searching for:
+	int i, skip, last;
+	u_int32_t mask;
+	int error = 0;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+
+	qf_lock(qfp);
+
+error: patch failed: bsd/vfs/vfs_quota.c:767
+error: while searching for:
+	struct dqblk dqb, *dqblkp;
+	uio_t auio;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (dq->dq_id == 0) {
+		dq->dq_flags &= ~DQ_MOD;
+
+error: patch failed: bsd/vfs/vfs_quota.c:986
+Checking patch bsd/vfs/vfs_subr.c...
+error: while searching for:
+	uio_t auio = NULL;
+	int eofflag, siz = UIO_BUFF_SIZE, alloc_size = 0, nentries = 0;
+	int open_flag = 0, full_erase_flag = 0;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	char *rbuf = NULL;
+	void *dir_pos;
+	void *dir_end;
+
+error: patch failed: bsd/vfs/vfs_subr.c:10995
+Checking patch bsd/vfs/vfs_syscalls.c...
+error: while searching for:
+	uio_t auio;
+	int error;
+	struct nameidata nd;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	bool put_vnode;
+
+	if (bufsize > INT32_MAX) {
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:7261
+error: while searching for:
+	int spacetype = proc_is64bit(vfs_context_proc(&context)) ? UIO_USERSPACE64 : UIO_USERSPACE32;
+	off_t loff;
+	int error, numdirent;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+get_from_fd:
+	error = fp_getfvp(vfs_context_proc(&context), fd, &fp, &vp);
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:10314
+error: while searching for:
+	struct attrlist attributelist;
+	vfs_context_t ctx = vfs_context_current();
+	int fd = uap->fd;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	kauth_action_t action;
+
+	AUDIT_ARG(fd, fd);
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:10613
+error: while searching for:
+	size_t mallocsize;
+	uint32_t nameiflags;
+	vfs_context_t ctx = vfs_context_current();
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	/* Start by copying in fsearchblock parameter list */
+	if (IS_64BIT_PROCESS(p)) {
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:10954
+error: while searching for:
+	size_t namelen;
+	u_int32_t nameiflags;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (uap->options & (XATTR_NOSECURITY | XATTR_NODEFAULT)) {
+		return EINVAL;
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:12906
+error: while searching for:
+	size_t attrsize = 0;
+	size_t namelen;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
+		return EINVAL;
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:12990
+error: while searching for:
+struct setxattr_ctx {
+	struct nameidata nd;
+	char attrname[XATTR_MAXNAMELEN + 1];
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+};
+
+/*
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:13038
+error: while searching for:
+	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
+	size_t namelen;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
+		return EINVAL;
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:13134
+error: while searching for:
+	size_t attrsize = 0;
+	u_int32_t nameiflags;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (uap->options & (XATTR_NOSECURITY | XATTR_NODEFAULT)) {
+		return EINVAL;
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:13311
+error: while searching for:
+	int spacetype = proc_is64bit(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
+	size_t attrsize = 0;
+	int error;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
+		return EINVAL;
+
+error: patch failed: bsd/vfs/vfs_syscalls.c:13353
+Checking patch bsd/vfs/vfs_vnops.c...
+error: while searching for:
+	int spacetype;
+	struct vfs_context context;
+	int error = 0;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+
+	context.vc_thread = current_thread();
+	context.vc_ucred = cred;
+
+error: patch failed: bsd/vfs/vfs_vnops.c:964
+Checking patch bsd/vm/vm_unix.c...
+Hunk #1 succeeded at 2553 (offset 15 lines).
+Checking patch config/MASTER...
+Hunk #1 succeeded at 116 (offset 3 lines).
+Checking patch config/MASTER.arm64.bcm2837...
+error: while searching for:
+#  Standard Apple OS Configurations:
+#  -------- ----- -- ---------------
+#
+#  KERNEL_BASE =    [ arm64 config_pmap_ppl xsmall msgb_small config_embedded config_requires_u32_munging ARM_EXTRAS_BASE ]
+#  KERNEL_RELEASE = [ KERNEL_BASE ]
+#  KERNEL_DEV =     [ KERNEL_BASE development mach_assert config_xnupost proc_ref_debug ]
+#  KERNEL_DEBUG =   [ KERNEL_BASE debug mach_assert config_xnupost config_waitq_stats config_workloop_debug ]
+#  BSD_BASE =       [ mach_bsd psynch config_proc_uuid_policy config_personas ]
+#  BSD_RELEASE =    [ BSD_BASE no_printf_str no_kprintf_str secure_kernel ]
+#  BSD_DEV =        [ BSD_BASE config_netboot config_imageboot config_coredump pgo config_vnguard ]
+#  BSD_DEBUG =      [ BSD_BASE config_netboot config_imageboot config_coredump pgo config_vnguard ]
+#  FILESYS_BASE =   [ devfs fifo fs_compression config_protect config_mnt_rootsnap config_fse routefs namedstreams bindfs]
+#  FILESYS_RELEASE= [ FILESYS_BASE ]
+#  FILESYS_DEV =    [ FILESYS_BASE config_union_mounts fdesc ]
+#  FILESYS_DEBUG =  [ FILESYS_BASE config_union_mounts fdesc ]
+
+error: patch failed: config/MASTER.arm64.bcm2837:16
+Checking patch iokit/Kernel/IOPMrootDomain.cpp...
+Hunk #1 succeeded at 559 (offset 4 lines).
+Hunk #2 succeeded at 1600 (offset 4 lines).
+Checking patch iokit/Kernel/IOPlatformExpert.cpp...
+Hunk #2 succeeded at 2212 (offset 33 lines).
+Checking patch iokit/Kernel/IOService.cpp...
+Hunk #1 succeeded at 5230 (offset 51 lines).
+Checking patch iokit/Kernel/IOUserClient.cpp...
+Hunk #1 succeeded at 3564 (offset 28 lines).
+Hunk #2 succeeded at 3610 (offset 28 lines).
+Hunk #3 succeeded at 3679 (offset 28 lines).
+Hunk #4 succeeded at 3728 (offset 28 lines).
+Hunk #5 succeeded at 3923 (offset 28 lines).
+Hunk #6 succeeded at 3956 (offset 28 lines).
+Checking patch iokit/KernelConfigTables.cpp...
+error: while searching for:
+    "     'IOProviderClass' = IOPlatformExpertDevice;"
+    "     'IOProbeScore'    = 0:32;"
+    "   }"
+    ")";
+
+error: patch failed: iokit/KernelConfigTables.cpp:39
+Checking patch iokit/bsddev/IOKitBSDInit.cpp...
+Hunk #1 succeeded at 695 (offset 12 lines).
+Hunk #2 succeeded at 781 (offset 12 lines).
+Checking patch iokit/conf/Makefile...
+Checking patch iokit/conf/files...
+Hunk #1 succeeded at 80 (offset 1 line).
+Checking patch libkern/conf/Makefile...
+Checking patch libkern/conf/files...
+Checking patch libkern/libkern/c++/OSData.h...
+Checking patch libsa/conf/Makefile...
+Checking patch makedefs/MakeInc.cmd...
+Hunk #1 succeeded at 101 (offset 1 line).
+Hunk #2 succeeded at 311 (offset 36 lines).
+Hunk #3 succeeded at 353 (offset 36 lines).
+Checking patch makedefs/MakeInc.def...
+Hunk #2 succeeded at 878 (offset 21 lines).
+Checking patch makedefs/MakeInc.top...
+Checking patch osfmk/arm/arm_init.c...
+Hunk #1 succeeded at 74 (offset 1 line).
+Hunk #2 succeeded at 347 (offset 9 lines).
+Hunk #3 succeeded at 370 (offset 9 lines).
+error: while searching for:
+#endif /* defined(HAS_APPLE_PAC) */
+
+	PE_init_platform(FALSE, args); /* Get platform expert set up */
+
+#if __arm64__
+	configure_timer_apple_regs();
+	wfe_timeout_configure();
+	wfe_timeout_init();
+
+	configure_misc_apple_boot_args();
+	configure_misc_apple_regs();
+
+#if (DEVELOPMENT || DEBUG)
+	unsigned long const *platform_stall_ptr = NULL;
+
+error: patch failed: osfmk/arm/arm_init.c:362
+Hunk #5 succeeded at 402 (offset 4 lines).
+Hunk #6 succeeded at 440 (offset 4 lines).
+Hunk #7 succeeded at 459 (offset 3 lines).
+Hunk #8 succeeded at 475 (offset 3 lines).
+Hunk #9 succeeded at 492 (offset 3 lines).
+Hunk #10 succeeded at 542 (offset 3 lines).
+Hunk #11 succeeded at 556 (offset 3 lines).
+Hunk #12 succeeded at 600 (offset 3 lines).
+Hunk #13 succeeded at 679 (offset 3 lines).
+Hunk #14 succeeded at 706 (offset 3 lines).
+Checking patch osfmk/arm/model_dep.c...
+Hunk #2 succeeded at 1183 (offset 24 lines).
+Checking patch osfmk/arm/pmap/pmap.c...
+Hunk #2 succeeded at 4824 (offset 146 lines).
+Hunk #3 succeeded at 7051 (offset 172 lines).
+Hunk #4 succeeded at 11936 (offset 310 lines).
+Hunk #5 succeeded at 11947 (offset 310 lines).
+Checking patch osfmk/arm/pmap/pmap.h...
+Hunk #1 succeeded at 116 (offset 4 lines).
+Hunk #2 succeeded at 479 (offset 31 lines).
+Checking patch osfmk/arm64/corecrypto/arm64_isa_compatibility.h...
+Checking patch osfmk/arm64/cpu.c...
+Hunk #1 succeeded at 584 (offset 16 lines).
+Checking patch osfmk/arm64/machine_routines.c...
+Hunk #1 succeeded at 745 (offset 11 lines).
+Hunk #2 succeeded at 759 (offset 11 lines).
+Hunk #3 succeeded at 949 (offset 11 lines).
+Hunk #4 succeeded at 1055 (offset 11 lines).
+Hunk #5 succeeded at 1116 (offset 11 lines).
+error: while searching for:
+	cluster_offsets[0] = 0;
+#endif
+	assert(topology_info.boot_cpu != NULL);
+	ml_read_chip_revision(&topology_info.chip_revision);
+
+	/*
+
+error: patch failed: osfmk/arm64/machine_routines.c:1107
+Hunk #7 succeeded at 1576 (offset 34 lines).
+Hunk #8 succeeded at 2393 (offset 43 lines).
+Checking patch osfmk/arm64/start.s...
+Hunk #7 succeeded at 882 (offset 7 lines).
+Hunk #8 succeeded at 939 (offset 7 lines).
+Checking patch osfmk/conf/Makefile...
+Checking patch osfmk/conf/files...
+Hunk #1 succeeded at 363 (offset 2 lines).
+Checking patch osfmk/conf/files.arm64...
+error: while searching for:
+osfmk/arm64/WKdmData.s		standard
+osfmk/arm64/lz4_decode_arm64.s  standard
+osfmk/arm64/lz4_encode_arm64.s  standard
+osfmk/arm64/amcc_rorgn_ppl.c optional nos_arm_asm config_pmap_ppl
+osfmk/arm64/amcc_rorgn_common.c optional nos_arm_asm
+osfmk/arm64/bcopy.s standard
+osfmk/arm64/bzero.s standard
+osfmk/arm/caches.c		standard
+
+error: patch failed: osfmk/conf/files.arm64:25
+Hunk #2 succeeded at 107 (offset 3 lines).
+Checking patch osfmk/console/video_console.c...
+Hunk #1 succeeded at 2860 (offset 5 lines).
+Checking patch osfmk/kern/debug.c...
+Hunk #1 succeeded at 1200 (offset 53 lines).
+Hunk #2 succeeded at 1219 (offset 53 lines).
+Checking patch osfmk/kern/exception.c...
+Hunk #1 succeeded at 641 (offset 5 lines).
+Hunk #2 succeeded at 660 (offset 5 lines).
+Checking patch osfmk/kern/kalloc.h...
+Checking patch osfmk/kern/percpu.h...
+error: while searching for:
+ * @param it            the name of the iterator
+ * @param name          the per-CPU variable name
+ */
+#define percpu_foreach_secondary(it, name) \
+	for (__PERCPU_TYPE(name) it, \
+	    __base_ ## it = (typeof(it))__unsafe_forge_bidi_indexable(void *, percpu_base.start, percpu_base.end - percpu_base.start), \
+	    __end_ ## it = (typeof(it))((caddr_t)__base_ ## it  + percpu_base.end - percpu_base.start); \
+        \
+	    (it = (typeof(it))((caddr_t)__base_ ## it + __PERCPU_ADDR(name)), \
+	    __base_ ## it <= __end_ ## it); \
+        \
+	    __base_ ## it = (typeof(it))((caddr_t)__base_ ## it + percpu_section_size()))
+
+#pragma mark - implementation details
+
+
+error: patch failed: osfmk/kern/percpu.h:236
+Checking patch osfmk/kern/sched.h...
+Hunk #1 succeeded at 472 (offset 8 lines).
+Checking patch osfmk/kern/sched_clutch.c...
+error: while searching for:
+static bool
+sched_clutch_thread_avoid_processor(processor_t processor, thread_t thread)
+{
+	if (processor->processor_primary != processor) {
+		/*
+		 * This is a secondary SMT processor.  If the primary is running
+		 * a realtime thread, only allow realtime threads on the secondary.
+
+error: patch failed: osfmk/kern/sched_clutch.c:3204
+Checking patch osfmk/kern/sched_prim.c...
+Hunk #1 succeeded at 2096 (offset 54 lines).
+Hunk #2 succeeded at 2152 (offset 54 lines).
+Hunk #3 succeeded at 2161 (offset 54 lines).
+Hunk #4 succeeded at 2208 (offset 54 lines).
+Hunk #5 succeeded at 2669 (offset 55 lines).
+Hunk #6 succeeded at 2797 (offset 55 lines).
+Hunk #7 succeeded at 2866 (offset 55 lines).
+Checking patch osfmk/kern/startup.c...
+Hunk #1 succeeded at 159 (offset 3 lines).
+Hunk #2 succeeded at 725 (offset 3 lines).
+Checking patch osfmk/kern/thread.c...
+Hunk #1 succeeded at 3077 (offset 12 lines).
+Checking patch osfmk/kern/work_interval.c...
+Hunk #1 succeeded at 722 (offset 39 lines).
+Checking patch osfmk/kern/work_interval.h...
+Hunk #1 succeeded at 85 (offset 2 lines).
+Checking patch pexpert/arm/pe_fiq.c...
+Checking patch pexpert/arm/pe_kprintf.c...
+Checking patch pexpert/conf/Makefile...
+Checking patch pexpert/pexpert/arm64/BCM2837.h...
+Checking patch pexpert/pexpert/arm64/board_config.h...
+Hunk #1 succeeded at 94 (offset 3 lines).
+Checking patch san/conf/Makefile...
+Checking patch security/conf/Makefile...
+Checking patch security/mac_vfs_subr.c...
+error: while searching for:
+{
+	vfs_context_t ctx;
+	int options = XATTR_NOSECURITY;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t auio;
+	int error;
+
+
+error: patch failed: security/mac_vfs_subr.c:167
+error: while searching for:
+{
+	vfs_context_t ctx = vfs_context_current();
+	int options = XATTR_NOSECURITY;
+	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+	uio_t auio;
+	int error;
+
+
+error: patch failed: security/mac_vfs_subr.c:198
+Checking patch tools/lldbmacros/core/syntax_checker.py...
+Applied patch Makefile cleanly.
+Applied patch SETUP/config/doconf cleanly.
+Applied patch bsd/conf/Makefile cleanly.
+Applied patch bsd/conf/Makefile.arm64 cleanly.
+Applied patch bsd/conf/Makefile.template cleanly.
+Applied patch bsd/conf/files cleanly.
+Applied patch bsd/dev/arm/km.c cleanly.
+Applied patch bsd/dev/arm/systemcalls.c cleanly.
+Applied patch bsd/dev/memdev.c cleanly.
+Applied patch bsd/kern/bsd_init.c cleanly.
+Applying patch bsd/kern/decmpfs.c with 1 reject...
+Rejected hunk #1.
+Applying patch bsd/kern/kern_exec.c with 3 rejects...
+Hunk #1 applied cleanly.
+Hunk #2 applied cleanly.
+Hunk #3 applied cleanly.
+Hunk #4 applied cleanly.
+Hunk #5 applied cleanly.
+Hunk #6 applied cleanly.
+Hunk #7 applied cleanly.
+Rejected hunk #8.
+Rejected hunk #9.
+Hunk #10 applied cleanly.
+Hunk #11 applied cleanly.
+Rejected hunk #12.
+Hunk #13 applied cleanly.
+Applying patch bsd/kern/kern_memorystatus.c with 4 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Hunk #4 applied cleanly.
+Rejected hunk #5.
+Applied patch bsd/kern/kern_priv.c cleanly.
+Applied patch bsd/kern/kern_sig.c cleanly.
+Applying patch bsd/kern/kpi_socket.c with 1 reject...
+Rejected hunk #1.
+Applying patch bsd/kern/sys_generic.c with 4 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Rejected hunk #4.
+Applied patch bsd/kern/sys_work_interval.c cleanly.
+Applying patch bsd/kern/uipc_syscalls.c with 1 reject...
+Rejected hunk #1.
+Applied patch bsd/miscfs/bindfs/bind_vfsops.c cleanly.
+Applied patch bsd/miscfs/mockfs/mockfs.h cleanly.
+Applied patch bsd/miscfs/mockfs/mockfs_fsnode.c cleanly.
+Applying patch bsd/nfs/nfs_serv.c with 5 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Rejected hunk #4.
+Rejected hunk #5.
+Applied patch bsd/sys/disk.h cleanly.
+Applying patch bsd/sys/uio_internal.h with 1 reject...
+Rejected hunk #1.
+Applying patch bsd/vfs/vfs_attrlist.c with 5 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Rejected hunk #4.
+Rejected hunk #5.
+Applying patch bsd/vfs/vfs_conf.c with 1 reject...
+Rejected hunk #1.
+Hunk #2 applied cleanly.
+Hunk #3 applied cleanly.
+Hunk #4 applied cleanly.
+Hunk #5 applied cleanly.
+Applying patch bsd/vfs/vfs_lookup.c with 1 reject...
+Rejected hunk #1.
+Applying patch bsd/vfs/vfs_quota.c with 4 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Rejected hunk #4.
+Applying patch bsd/vfs/vfs_subr.c with 1 reject...
+Rejected hunk #1.
+Applying patch bsd/vfs/vfs_syscalls.c with 10 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Rejected hunk #3.
+Rejected hunk #4.
+Rejected hunk #5.
+Rejected hunk #6.
+Rejected hunk #7.
+Rejected hunk #8.
+Rejected hunk #9.
+Rejected hunk #10.
+Applying patch bsd/vfs/vfs_vnops.c with 1 reject...
+Rejected hunk #1.
+Applied patch bsd/vm/vm_unix.c cleanly.
+Applied patch config/MASTER cleanly.
+Applying patch config/MASTER.arm64.bcm2837 with 1 reject...
+Rejected hunk #1.
+Hunk #2 applied cleanly.
+Hunk #3 applied cleanly.
+Applied patch iokit/Kernel/IOPMrootDomain.cpp cleanly.
+Applied patch iokit/Kernel/IOPlatformExpert.cpp cleanly.
+Applied patch iokit/Kernel/IOService.cpp cleanly.
+Applied patch iokit/Kernel/IOUserClient.cpp cleanly.
+Applying patch iokit/KernelConfigTables.cpp with 1 reject...
+Hunk #1 applied cleanly.
+Rejected hunk #2.
+Applied patch iokit/bsddev/IOKitBSDInit.cpp cleanly.
+Applied patch iokit/conf/Makefile cleanly.
+Applied patch iokit/conf/files cleanly.
+Applied patch libkern/conf/Makefile cleanly.
+Applied patch libkern/conf/files cleanly.
+Applied patch libkern/libkern/c++/OSData.h cleanly.
+Applied patch libsa/conf/Makefile cleanly.
+Applied patch makedefs/MakeInc.cmd cleanly.
+Applied patch makedefs/MakeInc.def cleanly.
+Applied patch makedefs/MakeInc.top cleanly.
+Applying patch osfmk/arm/arm_init.c with 1 reject...
+Hunk #1 applied cleanly.
+Hunk #2 applied cleanly.
+Hunk #3 applied cleanly.
+Rejected hunk #4.
+Hunk #5 applied cleanly.
+Hunk #6 applied cleanly.
+Hunk #7 applied cleanly.
+Hunk #8 applied cleanly.
+Hunk #9 applied cleanly.
+Hunk #10 applied cleanly.
+Hunk #11 applied cleanly.
+Hunk #12 applied cleanly.
+Hunk #13 applied cleanly.
+Hunk #14 applied cleanly.
+Applied patch osfmk/arm/model_dep.c cleanly.
+Applied patch osfmk/arm/pmap/pmap.c cleanly.
+Applied patch osfmk/arm/pmap/pmap.h cleanly.
+Applied patch osfmk/arm64/corecrypto/arm64_isa_compatibility.h cleanly.
+Applied patch osfmk/arm64/cpu.c cleanly.
+Applying patch osfmk/arm64/machine_routines.c with 1 reject...
+Hunk #1 applied cleanly.
+Hunk #2 applied cleanly.
+Hunk #3 applied cleanly.
+Hunk #4 applied cleanly.
+Hunk #5 applied cleanly.
+Rejected hunk #6.
+Hunk #7 applied cleanly.
+Hunk #8 applied cleanly.
+Applied patch osfmk/arm64/start.s cleanly.
+Applied patch osfmk/conf/Makefile cleanly.
+Applied patch osfmk/conf/files cleanly.
+Applying patch osfmk/conf/files.arm64 with 1 reject...
+Rejected hunk #1.
+Hunk #2 applied cleanly.
+Applied patch osfmk/console/video_console.c cleanly.
+Applied patch osfmk/kern/debug.c cleanly.
+Applied patch osfmk/kern/exception.c cleanly.
+Applied patch osfmk/kern/kalloc.h cleanly.
+Applying patch osfmk/kern/percpu.h with 1 reject...
+Rejected hunk #1.
+Applied patch osfmk/kern/sched.h cleanly.
+Applying patch osfmk/kern/sched_clutch.c with 1 reject...
+Rejected hunk #1.
+Applied patch osfmk/kern/sched_prim.c cleanly.
+Applied patch osfmk/kern/startup.c cleanly.
+Applied patch osfmk/kern/thread.c cleanly.
+Applied patch osfmk/kern/work_interval.c cleanly.
+Applied patch osfmk/kern/work_interval.h cleanly.
+Applied patch pexpert/arm/pe_fiq.c cleanly.
+Applied patch pexpert/arm/pe_kprintf.c cleanly.
+Applied patch pexpert/conf/Makefile cleanly.
+Applied patch pexpert/pexpert/arm64/BCM2837.h cleanly.
+Applied patch pexpert/pexpert/arm64/board_config.h cleanly.
+Applied patch san/conf/Makefile cleanly.
+Applied patch security/conf/Makefile cleanly.
+Applying patch security/mac_vfs_subr.c with 2 rejects...
+Rejected hunk #1.
+Rejected hunk #2.
+Applied patch tools/lldbmacros/core/syntax_checker.py cleanly.

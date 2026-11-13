@@ -1,0 +1,13 @@
+# vendor firmware, pulled by pull-firmware.sh / pull-firmware-root.sh: never committed
+/fw-*/
+/stage/
+
+# the kernel tree made by ios17/apply.sh
+/xnu-src/
+
+# run logs and what the loader leaves behind
+/logs/
+
+# python
+__pycache__/
+*.pyc
