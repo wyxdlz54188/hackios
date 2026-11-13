@@ -6,7 +6,12 @@
 # chip, not the board), and every phone driver of the common tree is left out of the kernel in
 # configs/oneplus8t.config.
 #
+# Step 2 of docs/porting/index.md: the first boot carries nothing of the phone's hardware. open.config
+# is the profile for exactly that -- no GPU, Wi-Fi, audio, haptic, camera or modem firmware is asked for
+# (CONFIG_FIRMWARE="none") -- and configs/oneplus8t.config leaves the drivers themselves out.
+#
 # Needs no firmware yet: the drivers that would read fw-*/ are the ones left out.
 #include common_defconfig
+#include open.config
 #include sm8250.config
 #include oneplus8t.config
