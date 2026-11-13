@@ -60,6 +60,39 @@ tsens-v2**，这也是 Linux 的 `tsens-v2.c` 同时管这两个 compatible 的�
 所以 `CONFIG_HAKIOS_SOCINFO=y` + `socinfo=1` 不需要改代码；跑起来后 `kern.hakios.soc_*` 应当报
 SM8250（soc_id 356，与 `ro.boot.platform_id=356` 对得上）。
 
+## 4. GPU（Adreno 650）
+
+本机设备树 `/soc/qcom,kgsl-3d0@3d00000`：
+
+| 属性 | 本机 | 参考机（redwood）的驱动里 |
+|---|---|---|
+| `qcom,chipid` | **`0x06050002`**（Adreno 650） | 硬编码 `0x06030500`（Adreno 642L） |
+| `reg` | `0x3d00000`（0x40000）、`0x3d61000`（0x800）、`0x3de0000`、`0x3d8b000`、`0x6900000` | 同族节点 |
+| GMU | `/soc/qcom,gmu@3d6a000` | 驱动写的是 `0x3d69000`：**差 0x1000** |
+| SMMU | `/soc/kgsl-iommu@3da0000`（`qcom,kgsl-smmu-v2`） | 同 |
+| 固件 | `a650_gmu.bin`、`a650_sqe.fw`、`a650_zap.*` | `a660_*` |
+
+要改：GMU 基址（0x3d6a000）、固件名（a650_*）、以及 `hakios-metal` 的 a6xx 表
+（`include/hakios-metal/a6xx.hpp` 只认 `0x06030500`）。GPU 的 chipid 驱动是从 DT 读的，不用改。
+
+## 5. 存储（UFS）
+
+`/sys/class/scsi_host/host0`、`/proc/partitions` 显示 UFS 3.1 256 GB；主控 `1d84000.ufshc`。
+
+**重要**：上游的 `drivers/storage/hakios.ufs.c` 里"没有 UFS 驱动，也不需要"—— UEFI 的 `UFSDxe`
+（Qualcomm 自己的驱动）把控制器、PHY、时钟、电源都带起来了，loader 留在 core 0 上继续服务，
+内核用 `ufs=2` 通过 loader 的共享页读块设备。所以**存储这条路是 UEFI 的，不是内核的**：
+kebab 的 UEFI 里 UFSDxe 是现成的，存储有机会在"空驱动首启"这一步就能读。
+
+要验证的只有：loader 报出的分区表与本机 `/dev/block/by-name` 一致、`ufs_check=1` 的哈希与本机镜像对得上。
+内核侧 `ufs_native=1`（自己的 `hakios.ufshc.c`）本项目不需要。
+
+## 6. 基带 / IPA
+
+本机 `/soc/qcom,ipa@1e00000` 的 `qcom,ipa-hw-ver` = **`0x11`，即 IPA 4.11** —— 与上游
+`docs/cellular.md` 里"the IPA layout is for IPA 4.11"**一致**。所以 IPA 的寄存器布局不用重写；
+要确认的是 modem 的 PAS id（`soc_pas_mpss`，本机 DT 里没有，见 `soc.args` 的缺项）和 `soc_mpss_mem`。
+
 ## 结论
 
 | 驱动 | 地址/布局 | 要改的 |
@@ -67,5 +100,8 @@ SM8250（soc_id 356，与 `ro.boot.platform_id=356` 对得上）。
 | `CPUFREQ` | 与驱动一致（0x18591000，3 个域） | 无（验证频率表与切换） |
 | `THERMAL` | TM 基址一致（0xc263000/0xc265000） | **只换 `sensors[]` 表**（`soc/thermal/kona-thermal-table.h`） |
 | `SOCINFO` | 走 `soc_smem`，本机 0x80900000/2 MB | 无 |
+| `UFS` | 走 UEFI 的 UFSDxe + loader，内核不碰控制器 | 无（验证分区表） |
+| `ADRENO` | 同族节点，但 **GMU 0x3d6a000**（差 0x1000）、chipid `0x06050002` | GMU 基址、`a650_*` 固件、Metal 表 |
+| `MODEM`/`IPA` | IPA **4.11**，与上游布局一致 | `soc_mpss_mem`、`soc_pas_mpss`（本机 DT 缺） |
 
-三个都可以在"空驱动首启"之后立刻打开，作为 order 1 的第一批。
+前三项和 `UFS` 可以在"空驱动首启"之后立刻打开，作为 order 1 的第一批。
