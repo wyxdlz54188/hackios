@@ -1,0 +1,23 @@
+--- a/Platforms/OnePlus/kebabPkg/DeviceBuild.py
++++ b/Platforms/OnePlus/kebabPkg/DeviceBuild.py
+@@ -56,13 +56,17 @@
+         return CommonPlatform.TargetsSupported
+ 
+     def GetRequiredSubmodules (self):
++        # OnePlus 8T overlay: the openssl submodule's pinned commit (67b5686) is gone from upstream,
++        # and Mu_Basecore's nested libspdm pins dead openssl/mbedtls commits -- stuart setup/update
++        # can never pass with them. kebab.dsc/fdf reference neither OpensslLib nor SpdmLib, so the
++        # openssl entry is dropped and Mu_Basecore is updated non-recursively (its needed nested
++        # pieces, BaseTools brotli and MdePkg libfdt, init fine from the local cache).
+         return [
+             RequiredSubmodule ("Binaries", True),
+             RequiredSubmodule ("Common/Mu", True),
+             RequiredSubmodule ("Common/Mu_OEM_Sample", True),
+-            RequiredSubmodule ("Mu_Basecore", True),
+-            RequiredSubmodule ("Silicium-ACPI", True),
+-            RequiredSubmodule ("Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl", True)
++            RequiredSubmodule ("Mu_Basecore", False),
++            RequiredSubmodule ("Silicium-ACPI", True)
+         ]
+ 
+     def SetArchitectures (self, list_of_requested_architectures):

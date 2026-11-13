@@ -119,8 +119,33 @@ STATIC VOID StartPayloadLoader (VOID) {
 - `uefi/mkimg.py`：自己构造 XNUP payload，条目名固定 `loader.efi`；用外部 `--payload` 时也检查
   第一个条目名，不是 `loader.efi` 就拒绝打包。
 
-**还没做的**：把上面的 diff 打进 `hakios-uefi` 的 `files/`，重新编 UEFI（需要 Mu-Silicium 在 BASE
-的树），再打镜像上机。
+**已落地（2026-11-13 第二轮）**：修复以**设备仓库覆盖层**的形式进本仓库
+`uefi/files/Silicon/Silicium/SiliciumPkg/Library/BootManagerLib/XnuLoader.c` —— 公共树的
+`uefi/apply.sh` 在拷贝 `hakios-uefi/files/` **之后**才拷 `devices/<name>/uefi/files/`，所以重建
+树时我们的版本覆盖上游那份。带修复的 FD 已重编出来（`Build/kebabPkg/RELEASE_CLANGPDB/FV/
+SILICIUM_UEFI.fd`，3 145 728 字节），`uefi/mkimg.py` 重打的 `xnu-oneplus8t.img`（1 802 240 字节）
+payload 第一个条目就是 `loader.efi`。
+
+**重建环境的四个坑**（都在 WSL 的 `/home/sean/mu3`，树 = BASE `e51cd87` + `hakios.patch` + 两个
+覆盖层）：
+
+1. `Silicon/Silicium/OpensslPkg/.../openssl` 子模块 pin 的 commit（`67b5686`）上游已消失，
+   `stuart setup/update` 永远失败；kebab 不用 OpensslLib，所以覆盖层
+   `uefi/files/Platforms/OnePlus/kebabPkg/DeviceBuild.py` 把这个 RequiredSubmodule 删了
+   （diff 在 `uefi/fixes/kebab-devicebuild-submodules.diff`），Mu_Basecore 也改成
+   非递归（它嵌套的 libspdm pin 的 openssl/mbedtls commit 同样没了）。
+2. BaseTools 不要等 `Mu-Basetools` 下载（WSL 出不了网）：`make -C Mu_Basecore/BaseTools`
+   从源码编（309 个测试全过），跑构建时
+   `PATH=Mu_Basecore/BaseTools/BinWrappers/PosixLike:$PATH`。
+3. `nasm`/`onecrypto` 两个 ext_dep 描述符（`BaseTools/Bin/*_ext_dep.yaml`、
+   `CryptoPkg/Binaries/OneCrypto_ext_dep.json`）抓不下来会把 update 判成 ERROR —— 挪走即可，
+   kebab 的 AARCH64 构建两个都不需要；iasl 是 `cibuild` scope，本来就不会抓。
+4. `build_uefi.py` 在 `Build/` 目录已存在时**跳过** setup/update —— 所以被 1–3 搞干净后，
+   重跑 `python3 build_uefi.py -d kebab -r RELEASE` 直接就编译，约 2 分钟出 FD。
+
+**下一步（只差手机）**：手机完整重启一次清掉 ABL 的 Load Error 状态，然后
+`fastboot boot xnu-oneplus8t.img`。期望看到 HakiOS logo 或至少 loader 的日志路径；若还进 900E，
+按上面"二分"一节的顺序排查。
 
 ## 内存映射：kebab 的 vs 本机设备树
 

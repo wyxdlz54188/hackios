@@ -10,7 +10,7 @@ Mu-Silicium 已经带 `Platforms/OnePlus/kebabPkg`，而**本机就是 kebab 板
 完整论证、比对输出和两个值得盯的内存窗口在 `uefi/README.md` 与 `docs/uefi-map-report.md`。
 
 - [x] 把本机设备树拉下来，与 kebab 的 `MemoryMapLib.c` 逐段比对（`tools/check-uefi-map.py`）
-- [ ] 在 Linux 上 `uefi/apply.sh`（= `uefi/apply.sh kebab`）+ `build_uefi.py -d kebab -r RELEASE`
+- [x] 在 Linux 上 `uefi/apply.sh`（= `uefi/apply.sh kebab`）+ `build_uefi.py -d kebab -r RELEASE`（2026-11-13：带 XnuLoader 修复的 FD 编出，环境坑见 `uefi/README.md`）
 - [ ] `./xl enter`，确认 `./xl screenshot` 有 HakiOS logo、`./xl log` 有 UEFI 第一行日志
 
 **算完的标志**：屏幕出现 logo，loader banner 出来。若卡在写日志/堆：先把 kebab 的 `DXE Heap` 从
