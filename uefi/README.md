@@ -143,6 +143,11 @@ payload 第一个条目就是 `loader.efi`。
 4. `build_uefi.py` 在 `Build/` 目录已存在时**跳过** setup/update —— 所以被 1–3 搞干净后，
    重跑 `python3 build_uefi.py -d kebab -r RELEASE` 直接就编译，约 2 分钟出 FD。
 
+WSL 出网走 Windows 主机的代理：`export https_proxy=http://192.168.1.5:7890 http_proxy=http://192.168.1.5:7890`
+（`192.168.1.5` 是 Windows 在局域网里的地址；代理只听 Windows 侧，所以 WSL 里不能用 127.0.0.1）。
+有了它第 2、3 条可以改成正常下载（把挪走的描述符放回即可），但第 1 条的 openssl pin 是上游真删了，
+代理也拉不回来 —— DeviceBuild.py 覆盖层仍然必需。
+
 **下一步（只差手机）**：手机完整重启一次清掉 ABL 的 Load Error 状态，然后
 `fastboot boot xnu-oneplus8t.img`。期望看到 HakiOS logo 或至少 loader 的日志路径；若还进 900E，
 按上面"二分"一节的顺序排查。
