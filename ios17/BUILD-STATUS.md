@@ -1,70 +1,61 @@
-# 第一次真正编译 iOS 17.0 内核：结果与卡点
+# 编译结果：iOS 17.0.0 内核编出来了
 
-2026-11-13，WSL2（Ubuntu，clang 21，theos 工具链，`xnu-10002.1.13` + 本移植的变基补丁）上跑的。
-**内核没有编出来**，但已经不是"打不打得上补丁"的问题了：编译进了 900 个编译单元、696 个 `.o`，
-卡在两个具体的 iOS 17 新依赖上。
+2026-11-13，WSL2（Ubuntu 24.04，clang 21.1.8，theos 的 cctools）上，用 `xnu-10002.1.13` + 本移植的
+变基补丁，**链接出了一个 arm64 Mach-O 内核**：
 
-## 环境（都在这台机器上做过一遍）
+```
+mach.development.bcm2837   15 067 968 字节
+Mach-O 64-bit arm64 executable, flags:<NOUNDEFS|PIE>
+sha256  e6b79530aad539af586d64aec9a80f52780416969000f5339013b78ddf53b5de
+```
 
-| 项 | 值 / 做法 |
+公共树的 `tools/make-kernel.sh --judge` 判定为成功：
+
+```
+make-kernel: the log shows a built kernel; only the kext symbol-set checks failed
+```
+
+（最后失败的 `config_all` / `check_all_exports` 是这个手机配置本来就有的：没有 DriverKit 与 Apple
+silicon 的那些 kext 符号。上游就是这么判的。）
+
+**没有上机**：这个内核还没进 `hakios-kernel`、没做 boot image、没碰过手机。
+
+## 从 251 个错误到一个内核：修了什么
+
+补丁已经把这些全部包含：`ios17/hakios-xnu-10002.1.13.patch`（3.7 MB，208 段，在干净的
+`xnu-10002.1.13` 上 `git apply --check` 通过）。逐条：
+
+| # | 现象 | 原因 | 修法 |
+|---|---|---|---|
+| 1 | `pmap.h: duplicate member 'reserved12'`（179 个错误） | 17 自己加了一个 `uint8_t reserved12`，移植的 `#else bool reserved12` 又加一个；17 还在 `HAS_APPLE_PAC` 之外读 `disable_jop` | `disable_jop` 无条件保留，删掉那个 `#else` |
+| 2 | `<TrustCache/API.h> file not found`（39 个） | XNU 17 依赖 Apple 闭源 libTrustCache 的接口，任何 SDK（13.3、14.5 都查过）都没有这个头 | `EXTERNAL_HEADERS/TrustCache/API.h`：按树里的用法（pmap_cs.h、amfi.h、miniamfi.c、kern_trustcache.c）重建类型与常量；`trustCacheInitializeRuntime()` 做成空实现；`TCTypeConfig[]` 全为 NULL（本移植不校验信任缓存） |
+| 3 | `IOExtensiblePaniclog` 的 12 个错误 | 17 新增的 DriverKit 类，`iig` 是闭源的 | 从 **macOS 14.5 SDK** 取真正的 `DriverKit/*.h`（35 个头）放进 13.3 SDK；再把这个类的 `.cpp` 与 `.iig.cpp` 从 `iokit/conf/files` 里关掉（本移植没有 paniclog-to-userspace 这条路） |
+| 4 | `nspace_snapshot_event` / `resolve_nspace_item` 未声明（13 个） | XNU 17 不再提供这两个函数，Apple 的 HFS（hfs-627.100.6）还在调 | `bsd/hfs/hfs.h` 里加两个 inline 空实现（无 namespace handler，返回 0） |
+| 5 | `kern_exec.c`: `kauth_cred_setresuid` 不存在 | 17 删掉了直接改真实凭据的 setter，只剩 model 版 | persona 兜底改成 no-op + `ios17 TODO(port)`：**这是行为退让**，Sileo 的 apt/dpkg 会以 mobile 身份跑，要按 17 的 API 重做 |
+| 6 | `percpu.h`: `expected expression` | 变基时宏的续行被合坏（`; \        \`） | 重写 `percpu_foreach_secondary` |
+| 7 | 链接：`_memcpy`、`_memmove`、`_ovbcopy` 未定义 | `osfmk/conf/files.arm64` 第 29 行把 amcc 的注释和 `osfmk/arm64/bcopy.s standard` 粘成了一行，`bcopy.s` 从没编过 | 拆成两行；`bcopy.s` 进去之后三个符号都有了 |
+
+## 环境（复现用）
+
+| 项 | 值 |
 |---|---|
-| WSL | 修复：`LxssManager` 卡 STOP_PENDING，重启后正常；发行版 `Ubuntu` 在 `E:\WSL\Ubuntu` |
-| 代理 | Windows 的代理只在 `127.0.0.1:7890`，WSL 到不了；用一个 Node 的 TCP 中继把 `0.0.0.0:7891` 转到它，WSL 里 `https_proxy=http://<网关>:7891` |
-| 包 | `build-essential clang lld llvm make cmake git python3 perl flex bison m4 autoconf automake libtool pkg-config libssl-dev zlib1g-dev liblzma-dev libbz2-dev libncurses-dev 7zip lz4 unzip rsync file bc`，**外加 `uuid-dev libelf-dev`**（`SETUP/decomment` 要 `uuid/uuid.h`） |
-| theos | `git clone --recursive https://github.com/theos/theos`；Linux 工具链是 `L0ghtmann/llvm-project` 的 `iOSToolchain-x86_64.tar.xz`（`toolchain/linux/iphone/bin/ld` = ld64） |
-| SDK | `github.com/theos/sdks` 里最高只有 **iPhoneOS16.5.sdk**（没有 17.0），所以用 16.5 的 SDK 编 17 的内核，`XNU_SDK_VERSION=16.5` |
-| xnu-deps | `--stage1` 要拉 6 个仓库（GnuTLS 通过代理常掉，写了个带重试的预取脚本），`--stage2` 要 `RC_DARWIN_KERNEL_VERSION=10002.1.13`（SDK 里的 System.kext 还是 16.5 的版本号，不设就报 "Could not determine xnu version from SDK or KDK"） |
-| 配置 | `make oneplus8t_defconfig` 通过（`kernel.ver=2.3.4-hakios-darwin22.5-sm8250`，这里的 darwin22.5 来自公共树的 VERSION 文件，编 17 时应当改成 23.0，见下） |
+| 系统 | WSL2 Ubuntu，`/home/sean/hakios`（公共树 + `devices/oneplus8t`） |
+| 编译器 | clang 21.1.8、lld（`ld64.lld`）、GNU make 4.4.1 |
+| 工具链 | theos（`toolchain/linux/iphone/bin/ld`）+ `theos/sdks/iPhoneOS16.5.sdk`（**这个 SDK 没有 17.0**） |
+| 依赖 | `uuid-dev libelf-dev`（`SETUP/decomment` 要 `uuid/uuid.h`） |
+| xnu-deps | stage1 + `RC_DARWIN_KERNEL_VERSION=10002.1.13` 的 stage2；`MacOSX13.3.sdk`（DriverKit 头）+ 从 14.5 SDK 补的那 35 个头 |
+| iig | `xnu-deps/host/bin/iig` 给 17 新增的类生成 `#if KERNEL #include <IOKit/...>` 包装头 |
+| 配置 | `make oneplus8t_defconfig`（含 `open.config`）；`XNU_SDK_VERSION=16.5` |
+| 构建 | `./xnu-build.sh -k -j4`，1585 行日志、937 个目标文件、kernel 15 MB |
 
-## 编译到了哪里
+代理：Windows 的代理只听 `127.0.0.1:7890`，WSL 到不了；用一个 Node TCP 中继（`0.0.0.0:7891`）转进去。
 
-```
-xnu-build.log: 4663 行, 904 条 CC, 696 个 .o
-iokit/DriverKit 的头、MIG 生成、bsd/kern/* 大量文件都过了
-```
+## 下一步
 
-## 两个卡点（都是 iOS 17 新引入的）
-
-### 1. `<TrustCache/API.h>` 不存在于任何 SDK — 39 个错误
-
-`osfmk/vm/pmap_cs.h`、`bsd/sys/trust_caches.h`、`libkern/libkern/amfi/amfi.h` 都
-`#include <TrustCache/API.h>`，而 macOS 13.3 **和 14.5** 的 SDK 里都没有这个头（14.5 只有
-`Kernel.framework/Headers/kern/trustcache.h`）；16.5 的 XNU 也不依赖它。它是 Apple 的
-`libtrustcache`（闭源）的接口，XNU 17 从它拿 `TrustCache_t`、`TrustCacheRuntime_t`、
-`TrustCacheMutableRuntime_t`、`trust_cache_query_token_t`、`trust_cache_runtime_init()` 等。
-
-两条路（还没做）：
-- 按 `kern_trustcache.c` 的用法写一个 `TrustCache/API.h` + 最小实现（本移植不校验信任缓存，
-  可以让查询一律返回"不在缓存里"）；
-- 或者把 `bsd/kern/kern_trustcache.c` 在 `bsd/conf/files` 里改成 `optional`，连同 `pmap_cs` 的
-  引用一起关掉，只留一个类型头。
-
-### 2. 新的 DriverKit 类 `IOExtensiblePaniclog` — 需要真正的 iig
-
-XNU 17 新增这个类（16.5 没有），Apple 的 `iig` 是闭源的，HakiOS 用
-`xnu-deps/host/bin/iig`（从 macOS SDK 里取同名头 + `iig-impl/` 的空实现）代替。
-`IOExtensiblePaniclog.h` 在 13.3 SDK 里没有，我让 shim 从 `.iig` 的 `#if KERNEL #include <IOKit/...>`
-生成一个包装头 —— 导出头这一步因此过了，但**内核编译**需要的东西更多：
-`iokit/Kernel/IOExtensiblePaniclog.cpp` 里那些 `SetActive_Impl`、`InsertData_Impl`、`CopyMemoryDescriptor_Impl`
-是 iig 生成的头里声明的，包装头没有它们，于是 12 个错误。
-
-要做的是把这个类的 iig 输出补出来（按 13.3 SDK 里别的 DriverKit 头的形状：`virtual ... LOCAL;`
-加 `_Impl` 声明），或者从 macOS 14 的 SDK 里取 `IOExtensiblePaniclog.h`（如果有）。
-
-## 已经修好的
-
-`osfmk/arm/pmap/pmap.h`：变基后 `struct pmap` 里有两个 `reserved12`（Apple 在 17 里自己加了一个
-8 位的，移植的 `#else bool reserved12` 也是一个），179 个错误全是它。17 的 `vm_map.c`、
-`vm_dyld_pager.c`、`vm_shared_region.c` 在 `HAS_APPLE_PAC` 之外读 `disable_jop`，所以那个字段
-**必须无条件存在**。补丁在 `fixes/pmap.h.patch`（对干净的 `xnu-10002.1.13` 打，替换 pmap.h 的
-那一段变基结果）。修完重编：`reserved12` 的错误归零。
-
-## 下一步（按顺序）
-
-1. `TrustCache/API.h`（头 + 最小实现，或关掉 `kern_trustcache.c`）。
-2. `IOExtensiblePaniclog` 的 iig 输出。
-3. 再编一轮，看剩下的错误（`uipc_mbuf.c`、`bsd/hfs/*` 里也还有几条，`build2.log` 里能看到）。
-4. 编过之后才是链接；链接的最后一两步 `check_all_exports` 失败是预期的（公共树的 `make-kernel.sh`
-   就是按这个判的）。
-5. 公共树 `VERSION` 的 `DARWIN=22.5.0` / `XNU=xnu-8796.121.2` 在编 17 时要改成 `23.0.0` /
-   `10002.1.13`，否则内核版本串还是 16.5 的。
+1. **上机**：`cp .../mach.development.bcm2837 ~/hakios/hakios-kernel`，然后 `./xl enter`（UEFI 用
+   Mu-Silicium 现成的 kebab 平台，见 `uefi/README.md`）。首启大概率停在 UEFI/loader 或早期内核，
+   日志在 `logs/`。
+2. 把 persona 兜底按 17 的 `kauth_cred_model_setuidgid()` 重做（第 5 条）。
+3. 驱动逐个打开（`docs/port-checklist.md` 第 3 步）。
+4. `RC_DARWIN_KERNEL_VERSION` 与公共树 `VERSION` 的 `DARWIN=22.5.0`/`XNU=8796` 应当改成 23.0/10002，
+   否则版本串还是 16.5 的。

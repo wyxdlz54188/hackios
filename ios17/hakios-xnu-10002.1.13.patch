@@ -1,3 +1,162 @@
+diff --git a/EXTERNAL_HEADERS/TrustCache/API.h b/EXTERNAL_HEADERS/TrustCache/API.h
+new file mode 100755
+index 0000000..47842ce
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/API.h
+@@ -0,0 +1,153 @@
++/*
++ * TrustCache/API.h -- the interface XNU 17.0 expects from Apple's libTrustCache.
++ *
++ * Apple ships this header in no SDK (13.3 and 14.5 were both checked) and libTrustCache itself is
++ * closed, but XNU 17.0's own sources include <TrustCache/API.h> from osfmk/vm/pmap_cs.h,
++ * bsd/sys/trust_caches.h and libkern/libkern/amfi/amfi.h, and this port's libkern/amfi/miniamfi.c
++ * implements the interface. This header is the port's reconstruction: the types and constants the
++ * tree uses, nothing more. amfi.h declares TrustCacheInterface_t itself (its own typedefs of the
++ * function pointers), so that struct is not repeated here.
++ *
++ * Nothing loads a trust cache on this port (miniamfi answers "not found" to every query), so what
++ * matters is that every user agrees -- the layout is not Apple's, it is ours.
++ *
++ * Install: xnu-src/xnu-10002.1.13/EXTERNAL_HEADERS/TrustCache/API.h (a directory on the kernel's
++ * include path).
++ */
++#ifndef _TRUSTCACHE_API_H_
++#define _TRUSTCACHE_API_H_
++
++#include <stdint.h>
++#include <stddef.h>
++#include <stdbool.h>
++
++#define kTCEntryHashSize        20
++#define kUUIDSize               16
++
++/* Which kind of trust cache a module or a query is about. */
++typedef enum {
++	kTCTypeInvalid = 0,
++	kTCTypeStatic,
++	kTCTypeLegacy,
++	kTCTypeEngineering,
++	kTCTypeLTRS,
++	kTCTypeDTRS,
++	kTCTypeCryptex1BootOS,
++	kTCTypeCryptex1BootApp,
++	kTCTypeConfig,
++	kTCTypeTotal,
++} TCType_t;
++
++/* What a query looks at. */
++typedef enum {
++	kTCQueryTypeAll = 0,
++	kTCQueryTypeStatic,
++	kTCQueryTypeLoadable,
++	kTCQueryTypeTotal,
++} TCQueryType_t;
++
++/* What a module can do; a bit set per capability. */
++typedef uint64_t TCCapabilities_t;
++enum {
++	kTCCapabilityNone = 0,
++};
++
++/* The components a call can fail in: the "component" of a TCReturn. */
++enum {
++	kTCComponentLoadModule = 0,
++	kTCComponentLoad,
++	kTCComponentQuery,
++	kTCComponentModuleCapabilities,
++	kTCComponentQueryTCType,
++	kTCComponentQueryCapabilities,
++	kTCComponentQueryHashType,
++	kTCComponentQueryFlags,
++	kTCComponentQueryConstraintCategory,
++	kTCComponentConstructInvalid,
++	kTCComponentCheckRuntimeForUUID,
++	kTCComponentExtractModule,
++	kTCComponentGetModule,
++	kTCComponentGetUUID,
++};
++
++/* How a call failed: the "error" of a TCReturn. */
++enum {
++	kTCReturnSuccess = 0,
++	kTCReturnNotFound,
++	kTCReturnUnsupported,
++	kTCReturnInvalidArguments,
++	kTCReturnDuplicate,
++	kTCReturnError,
++};
++
++typedef struct {
++	uint8_t     component;
++	uint8_t     error;
++	uint16_t    uniqueError;
++} TCReturn_t;
++
++static inline TCReturn_t
++buildTCRet(uint8_t component, uint8_t error, uint16_t uniqueError)
++{
++	TCReturn_t ret = { component, error, uniqueError };
++	return ret;
++}
++
++/*
++ * A loaded module, the runtime that holds them, and the mutable part of that runtime. Opaque to every
++ * user in this tree: the port never loads one, and the code that would (kern_trustcache.c) only hands
++ * the pointers back to the interface amfi.h declares.
++ */
++typedef struct {
++	uint64_t    opaque[8];
++} TrustCache_t;
++
++typedef struct {
++	uint64_t    opaque[16];
++	/* kern_trustcache.c reads this one field of the runtime (line 857 of Apple's file). */
++	bool        allowEngineeringTC;
++} TrustCacheRuntime_t;
++
++typedef struct {
++	uint64_t    opaque[16];
++} TrustCacheMutableRuntime_t;
++
++/* What a successful query leaves behind for the caller to read. */
++typedef struct {
++	uint8_t     hashType;
++	uint8_t     type;
++	uint8_t     constraintCategory;
++	uint8_t     reserved;
++	uint64_t    flags;
++	TCCapabilities_t capabilities;
++	uint8_t     hash[kTCEntryHashSize];
++} TrustCacheQueryToken_t;
++
++/*
++ * The per-type table kern_trustcache.c indexes when it decides whether the caller may load this kind of
++ * trust cache. The port loads none, so every entry says "no entitlement needed" (NULL); the shape is
++ * what the caller reads.
++ */
++struct tc_type_config {
++	const char *entitlementValue;
++};
++static const struct tc_type_config TCTypeConfig[kTCTypeTotal] = { { NULL } };
++
++/*
++ * What libTrustCache would do when AMFI starts: take the two halves of the runtime and the policy
++ * switches. The port has no trust caches, so the runtime stays empty and every query says "not found"
++ * (miniamfi.c). The switches are accepted and ignored.
++ */
++struct _img4_runtime;
++
++static inline void
++trustCacheInitializeRuntime(TrustCacheRuntime_t *runtime, TrustCacheMutableRuntime_t *mutable_runtime,
++    bool allow_second_static_cache, bool allow_engineering_caches, bool allow_legacy_caches,
++    const struct _img4_runtime *img4_runtime)
++{
++	(void)runtime; (void)mutable_runtime;
++	(void)allow_second_static_cache; (void)allow_engineering_caches; (void)allow_legacy_caches;
++	(void)img4_runtime;
++}
++
++#endif /* _TRUSTCACHE_API_H_ */
 diff --git a/Makefile b/Makefile
 index e78d847..03fc3ff 100644
 --- a/Makefile
@@ -54473,79 +54632,888 @@ index 3e6bffa..43cffb9 100644
  void
  mdevremoveall(void)
  {
-diff --git a/bsd/hfs/hfs_builtin.c b/bsd/hfs/hfs_builtin.c
+diff --git a/bsd/hfs_encodings/hfs_encodinghint.c b/bsd/hfs_encodings/hfs_encodinghint.c
 new file mode 100644
-index 0000000..666a098
+index 0000000..06c0aa9
 --- /dev/null
-+++ b/bsd/hfs/hfs_builtin.c
-@@ -0,0 +1,67 @@
++++ b/bsd/hfs_encodings/hfs_encodinghint.c
+@@ -0,0 +1,105 @@
 +/*
-+ * HakiOS: what HFS's kext had in its C++ part (hfs_iokit.cpp), for HFS built into the kernel.
++ * Copyright (c) 2001-2015 Apple Inc. All rights reserved.
 + *
-+ * The kext registered the filesystem from its IOService's start(); built in, it is an entry of the static table
-+ * (bsd/vfs/vfs_conf.c) and hfs_init() does the rest.  The IOKit questions -- is the medium ejectable, which media
-+ * carry a given content UUID, the platform's serial number -- have no use for a data volume on the phone's own
-+ * flash, and the keys of content protection are AppleKeyStore's, which this kernel does not have: a volume made
-+ * without content protection never asks for them.
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. The rights granted to you under the License
++ * may not be used to create, or enable the creation or redistribution of,
++ * unlawful or unlicensed copies of an Apple operating system, or to
++ * circumvent, violate, or enable the circumvention or violation of, any
++ * terms of an Apple operating system software license agreement.
++ * 
++ * Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
 + */
++
++#include <sys/param.h>
++#include "../core/hfs.h"
++
++
++/* CJK Mac Encoding Bits */
++#define CJK_JAPAN	        0x1
++#define CJK_KOREAN	        0x2
++#define CJK_CHINESE_TRAD	0x4
++#define CJK_CHINESE_SIMP	0x8
++#define CJK_ALL	            0xF
++
++#define CJK_CHINESE    (CJK_CHINESE_TRAD | CJK_CHINESE_SIMP)
++#define CJK_KATAKANA   (CJK_JAPAN)
++
++
++/* Remember the last unique CJK bit */
++u_int8_t cjk_lastunique = 0;
++
++/* Encoding bias */
++u_int32_t hfs_encodingbias = 0;
++int hfs_islatinbias = 0;
++
++extern lck_mtx_t  encodinglst_mutex;
++
++
++/* Map CJK bits to Mac encoding */
++u_int8_t cjk_encoding[] = {
++	/* 0000 */  kTextEncodingMacUnicode,
++	/* 0001 */  kTextEncodingMacJapanese,
++	/* 0010 */  kTextEncodingMacKorean,
++	/* 0011 */  kTextEncodingMacJapanese,
++	/* 0100 */  kTextEncodingMacChineseTrad,
++	/* 0101 */  kTextEncodingMacJapanese,
++	/* 0110 */  kTextEncodingMacKorean,
++	/* 0111 */  kTextEncodingMacJapanese,
++	/* 1000 */  kTextEncodingMacChineseSimp,
++	/* 1001 */  kTextEncodingMacJapanese,
++	/* 1010 */  kTextEncodingMacKorean,
++	/* 1011 */  kTextEncodingMacJapanese,
++	/* 1100 */  kTextEncodingMacChineseTrad,
++	/* 1101 */  kTextEncodingMacJapanese,
++	/* 1110 */  kTextEncodingMacKorean,
++	/* 1111 */  kTextEncodingMacJapanese
++};
++
++
++u_int32_t
++hfs_pickencoding(__unused const u_int16_t *src, __unused int len) {
++	/* Just return kTextEncodingMacRoman if HFS standard is not supported. */
++	return kTextEncodingMacRoman;
++}
++
++
++u_int32_t hfs_getencodingbias(void)
++{
++	return (hfs_encodingbias);
++}
++
++
++void hfs_setencodingbias(u_int32_t bias)
++{
++	hfs_encodingbias = bias;
++
++	switch (bias) {
++	case kTextEncodingMacRoman:
++	case kTextEncodingMacCentralEurRoman:
++	case kTextEncodingMacTurkish:
++	case kTextEncodingMacCroatian:
++	case kTextEncodingMacIcelandic:
++	case kTextEncodingMacRomanian:
++		hfs_islatinbias = 1;
++		break;
++	default:
++		hfs_islatinbias = 0;
++		break;					
++	}
++}
+diff --git a/bsd/hfs_encodings/hfs_encodings.c b/bsd/hfs_encodings/hfs_encodings.c
+new file mode 100644
+index 0000000..c507b09
+--- /dev/null
++++ b/bsd/hfs_encodings/hfs_encodings.c
+@@ -0,0 +1,623 @@
++/*
++ * Copyright (c) 2000-2015 Apple Inc. All rights reserved.
++ *
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. The rights granted to you under the License
++ * may not be used to create, or enable the creation or redistribution of,
++ * unlawful or unlicensed copies of an Apple operating system, or to
++ * circumvent, violate, or enable the circumvention or violation of, any
++ * terms of an Apple operating system software license agreement.
++ * 
++ * Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
++ */
++
++#include <IOKit/IOLib.h>
++
 +#include <sys/types.h>
 +#include <sys/errno.h>
-+#include <stdbool.h>
-+#include <mach/kern_return.h>
-+#include "hfs.h"
-+#include "hfs_iokit.h"
 +
-+#ifndef panic_on_assert
-+bool panic_on_assert = false;
-+#endif
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/kernel.h>
++#include <sys/malloc.h>
++#include <sys/queue.h>
++#include <sys/utfconv.h>
++#include <kern/host.h>
++#include <mach/host_priv.h>
++#include <libkern/OSKextLib.h>
++#include <libkern/OSKextLibPrivate.h>
 +
-+int
-+hfs_is_ejectable(__unused const char *cdev_name)
-+{
-+	return 0;
-+}
++#include "hfs_encodings.h"
++#include "../core/hfs_macos_defs.h"
++#include "../core/hfs.h"
++
++uint64_t hfs_allocated __attribute__((aligned(8)));
++
++lck_grp_t * encodinglst_lck_grp;
++lck_grp_attr_t * encodinglst_lck_grp_attr;
++lck_attr_t * encodinglst_lck_attr;
++
++
++/* hfs encoding converter list */
++SLIST_HEAD(encodinglst, hfs_encoding) hfs_encoding_list = {0};
++
++lck_mtx_t  encodinglst_mutex;
++
++/* hfs encoding converter entry */
++struct	hfs_encoding {
++	SLIST_ENTRY(hfs_encoding)  link;
++	int			refcount;
++	int			kmod_id;
++	u_int32_t	encoding;
++	hfs_to_unicode_func_t	get_unicode_func;
++	unicode_to_hfs_func_t	get_hfsname_func;
++};
 +
 +void
-+hfs_iterate_media_with_content(__unused const char *content_uuid_cstring,
-+    __unused int (*func)(const char *bsd_name, const char *uuid_str, void *arg), __unused void *arg)
++hfs_converterinit(void)
 +{
++	SLIST_INIT(&hfs_encoding_list);
++
++	encodinglst_lck_grp_attr= lck_grp_attr_alloc_init();
++	encodinglst_lck_grp  = lck_grp_alloc_init("cnode_hash", encodinglst_lck_grp_attr);
++	encodinglst_lck_attr = lck_attr_alloc_init();
++
++	lck_mtx_init(&encodinglst_mutex, encodinglst_lck_grp, encodinglst_lck_attr);
++
++	/*
++	 * add resident MacRoman converter and take a reference
++	 * since its always "loaded". MacRoman is the default converter
++	 * for HFS standard volumes.
++	 *
++	 * Only do this if we are actually supporting HFS standard 
++	 * volumes. The converter is not used on configurations 
++	 * that do not support HFS standard. 
++	 */
++	hfs_addconverter(0, kTextEncodingMacRoman, mac_roman_to_unicode, unicode_to_mac_roman);
++	SLIST_FIRST(&hfs_encoding_list)->refcount++;
 +}
 +
-+kern_return_t
-+hfs_get_platform_serial_number(__unused char *serial_number_str, __unused uint32_t len)
++void hfs_converterdone(void)
 +{
-+	return KERN_FAILURE;
++	if (encodinglst_lck_grp_attr)
++		lck_grp_attr_free(encodinglst_lck_grp_attr);
++	if (encodinglst_lck_grp)
++		lck_grp_free(encodinglst_lck_grp);
++	if (encodinglst_lck_attr)
++		lck_attr_free(encodinglst_lck_attr);
 +}
 +
-+#if CONFIG_PROTECT
++/*
++ * For configurations that do support HFS standard, we need all of these..
++ */
++
++/*
++ * hfs_addconverter - add an HFS encoding converter
++ *
++ * This is called exclusivly by kernel loadable modules
++ * (like HFS_Japanese.kmod) to register hfs encoding
++ * conversion routines.
++ *
++ */
 +int
-+hfs_unwrap_key(__unused aks_cred_t access, __unused const aks_wrapped_key_t wrapped_key_in,
-+    __unused aks_raw_key_t key_out)
++hfs_addconverter(int id, u_int32_t encoding, hfs_to_unicode_func_t get_unicode, unicode_to_hfs_func_t get_hfsname)
 +{
-+	return ENOTSUP;
++	struct hfs_encoding *encp = hfs_malloc_type(struct hfs_encoding);
++
++	lck_mtx_lock(&encodinglst_mutex);
++
++	encp->link.sle_next = NULL;
++	encp->refcount = 0;
++	encp->encoding = encoding;
++	encp->get_unicode_func = get_unicode;
++	encp->get_hfsname_func = get_hfsname;
++	encp->kmod_id = id;
++	SLIST_INSERT_HEAD(&hfs_encoding_list, encp, link);
++
++	lck_mtx_unlock(&encodinglst_mutex);
++
++	if (id)
++		OSKextRetainKextWithLoadTag(id);
++
++	return (0);
++}
++
++
++/*
++ * hfs_remconverter - remove an HFS encoding converter
++ *
++ * Can be called by a kernel loadable module's finalize
++ * routine to remove an encoding converter so that the
++ * module (i.e. the code) can be unloaded.
++ *
++ * However, in the normal case, the removing and unloading
++ * of these converters is done in hfs_relconverter.
++ * The call is initiated from within the kernel during the unmounting of an hfs voulume.
++ */
++int
++hfs_remconverter(int id, u_int32_t encoding)
++{
++	struct hfs_encoding *encp;
++
++	lck_mtx_lock(&encodinglst_mutex);
++	SLIST_FOREACH(encp, &hfs_encoding_list, link) {
++		if (encp->encoding == encoding && encp->kmod_id == id) {
++			encp->refcount--;
++			
++			/* if converter is no longer in use, release it */
++			if (encp->refcount <= 0 && encp->kmod_id != 0) {
++				SLIST_REMOVE(&hfs_encoding_list, encp, hfs_encoding, link);
++				lck_mtx_unlock(&encodinglst_mutex);
++				OSKextReleaseKextWithLoadTag(encp->kmod_id);
++                hfs_free_type(encp, struct hfs_encoding);
++				return (0);
++ 			} else {
++ 				lck_mtx_unlock(&encodinglst_mutex);
++				return (1);   /* busy */
++			}
++			break;
++		}
++	}
++	lck_mtx_unlock(&encodinglst_mutex);
++
++	return (0);
++}
++
++/*
++ * hfs_getconverter - get HFS encoding converters
++ *
++ * Normally called during the mounting of an hfs voulume.
++ */
++int
++hfs_getconverter(u_int32_t encoding, hfs_to_unicode_func_t *get_unicode, unicode_to_hfs_func_t *get_hfsname)
++{
++	struct hfs_encoding *encp;
++	int found = 0;
++
++	lck_mtx_lock(&encodinglst_mutex);
++	SLIST_FOREACH(encp, &hfs_encoding_list, link) {
++		if (encp->encoding == encoding) {
++			found = 1;
++			*get_unicode = encp->get_unicode_func;
++			*get_hfsname = encp->get_hfsname_func;
++			++encp->refcount;
++			break;
++		}
++	}
++	lck_mtx_unlock(&encodinglst_mutex);
++
++	if (!found) {
++		*get_unicode = NULL;
++		*get_hfsname = NULL;
++		return (EINVAL);
++	}
++	
++	return (0);
++}
++
++
++/*
++ * hfs_relconverter - release interest in an HFS encoding converter
++ *
++ * Normally called during the unmounting of an hfs voulume.
++ */
++int
++hfs_relconverter(u_int32_t encoding)
++{
++	struct hfs_encoding *encp;
++
++	lck_mtx_lock(&encodinglst_mutex);
++	SLIST_FOREACH(encp, &hfs_encoding_list, link) {
++		if (encp->encoding == encoding) {
++			encp->refcount--;
++			
++			/* if converter is no longer in use, release it */
++			if (encp->refcount <= 0 && encp->kmod_id != 0) {
++				SLIST_REMOVE(&hfs_encoding_list, encp, hfs_encoding, link);
++				lck_mtx_unlock(&encodinglst_mutex);
++ 
++				OSKextReleaseKextWithLoadTag(encp->kmod_id);
++                hfs_free_type(encp, struct hfs_encoding);
++				return (0);
++			}
++			lck_mtx_unlock(&encodinglst_mutex);
++			return (0);
++		}
++	}
++	lck_mtx_unlock(&encodinglst_mutex);
++
++	return (EINVAL);
++}
++
++/*
++ * When an HFS name cannot be encoded with the current
++ * volume encoding then MacRoman is used as a fallback.
++ */
++int
++mac_roman_to_utf8(const Str31 hfs_str, ByteCount maxDstLen, ByteCount *actualDstLen, unsigned char* dstStr)
++{
++	int error;
++	UniChar uniStr[MAX_HFS_UNICODE_CHARS];
++	ItemCount uniCount;
++	size_t utf8len;
++	u_int8_t pascal_length = 0;
++
++	/* 
++	 * Validate the length of the Pascal-style string before passing it
++	 * down to the decoding engine.
++	 */
++	pascal_length = *((const u_int8_t*)(hfs_str));
++	if (pascal_length > 31) {
++		/* invalid string; longer than 31 bytes */
++		error = EINVAL;
++		return error;
++	}
++
++	error = mac_roman_to_unicode(hfs_str, uniStr, MAX_HFS_UNICODE_CHARS, &uniCount);
++	
++	if (uniCount == 0)
++		error = EINVAL;
++
++	if (error == 0) {
++		error = utf8_encodestr(uniStr, uniCount * sizeof(UniChar), dstStr, &utf8len, maxDstLen , ':', 0);
++		if (error == ENAMETOOLONG)
++			*actualDstLen = utf8_encodelen(uniStr, uniCount * sizeof(UniChar), ':', 0);
++		else
++			*actualDstLen = utf8len;
++	}
++
++	return error;
 +}
 +
 +int
-+hfs_rewrap_key(__unused aks_cred_t access, __unused cp_key_class_t dp_class,
-+    __unused const aks_wrapped_key_t wrapped_key_in, __unused aks_wrapped_key_t wrapped_key_out)
++utf8_to_mac_roman(ByteCount srcLen, const unsigned char* srcStr, Str31 dstStr)
 +{
-+	return ENOTSUP;
++	int error;
++	UniChar uniStr[MAX_HFS_UNICODE_CHARS];
++	size_t ucslen;
++
++	error = utf8_decodestr(srcStr, srcLen, uniStr, &ucslen, sizeof(uniStr), ':', 0);
++	if (error == 0)
++		error = unicode_to_mac_roman(uniStr, ucslen/sizeof(UniChar), dstStr);
++
++	return error;
 +}
 +
-+int
-+hfs_new_key(__unused aks_cred_t access, __unused cp_key_class_t dp_class, __unused aks_raw_key_t key_out,
-+    __unused aks_wrapped_key_t wrapped_key_out)
++/*
++ * HFS MacRoman to/from Unicode conversions are built into the kernel
++ * All others hfs encodings are loadable.
++ */
++
++/* 0x00A0 - 0x00FF = Latin 1 Supplement (30 total) */
++static u_int8_t gLatin1Table[] = {
++  /*		  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
++  /* 0x00A0 */	0xCA, 0xC1, 0xA2, 0xA3, 0xDB, 0xB4,  '?', 0xA4, 0xAC, 0xA9, 0xBB, 0xC7, 0xC2,  '?', 0xA8, 0xF8,
++  /* 0x00B0 */	0xA1, 0XB1,  '?',  '?', 0xAB, 0xB5, 0xA6, 0xe1, 0xFC,  '?', 0xBC, 0xC8,  '?',  '?',  '?', 0xC0,
++  /* 0x00C0 */	 '?',  '?',  '?',  '?',  '?',  '?', 0xAE,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x00D0 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xAF,  '?',  '?',  '?',  '?',  '?',  '?', 0xA7,
++  /* 0x00E0 */	 '?',  '?',  '?',  '?',  '?',  '?', 0xBE,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x00F0 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xD6, 0xBF,  '?',  '?',  '?',  '?',  '?',  '?',  '?'
++};
++
++/* 0x02C0 - 0x02DF = Spacing Modifiers (8 total) */
++static u_int8_t gSpaceModsTable[] = {
++  /*		  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
++  /* 0x02C0 */	 '?',  '?',  '?',  '?',  '?',  '?', 0xF6, 0xFF,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x02D0 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xF9, 0xFA, 0xFB, 0xFE, 0xF7, 0xFD,  '?',  '?'
++};
++
++/* 0x2010 - 0x20AF = General Punctuation (17 total) */
++static u_int8_t gPunctTable[] = {
++  /*		  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
++  /* 0x2010 */	 '?',  '?',  '?', 0xd0, 0xd1,  '?',  '?',  '?', 0xd4, 0xd5, 0xe2,  '?', 0xd2, 0xd3, 0xe3,  '?',
++  /* 0x2020 */	0xa0, 0xe0, 0xa5,  '?',  '?',  '?', 0xc9,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2030 */	0xe4,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xdc, 0xdd,  '?',  '?',  '?',  '?',  '?',
++  /* 0x2040 */	 '?',  '?',  '?',  '?', 0xda,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2050 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2060 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2070 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2080 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2090 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x20A0 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xdb,  '?',  '?',  '?'
++};
++
++/* 0x22xx = Mathematical Operators (11 total) */
++static u_int8_t gMathTable[] = {
++  /*		  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
++  /* 0x2200 */	 '?',  '?', 0xb6,  '?',  '?',  '?', 0xc6,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xb8,
++  /* 0x2210 */	 '?', 0xb7,  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xc3,  '?',  '?',  '?', 0xb0,  '?',
++  /* 0x2220 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xba,  '?',  '?',  '?',  '?',
++  /* 0x2230 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2240 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xc5,  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2250 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++  /* 0x2260 */	0xad,  '?',  '?',  '?', 0xb2, 0xb3,  '?',  '?'
++};
++
++/* */
++static u_int8_t gReverseCombTable[] = {
++  /*		  0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
++  /* 0x40 */	0xDA, 0x40, 0xDA, 0xDA, 0xDA, 0x56, 0xDA, 0xDA, 0xDA, 0x6C, 0xDA, 0xDA, 0xDA, 0xDA, 0x82, 0x98,
++  /* 0x50 */	0xDA, 0xDA, 0xDA, 0xDA, 0xDA, 0xAE, 0xDA, 0xDA, 0xDA, 0xC4, 0xDA, 0xDA, 0xDA, 0xDA, 0xDA, 0xDA,
++  /* 0x60 */	0xDA, 0x4B, 0xDA, 0xDA, 0xDA, 0x61, 0xDA, 0xDA, 0xDA, 0x77, 0xDA, 0xDA, 0xDA, 0xDA, 0x8D, 0xA3,
++  /* 0x70 */	0xDA, 0xDA, 0xDA, 0xDA, 0xDA, 0xB9, 0xDA, 0xDA, 0xDA, 0xCF, 0xDA, 0xDA, 0xDA, 0xDA, 0xDA, 0xDA,
++
++  /* Combining Diacritical Marks (0x0300 - 0x030A) */
++  /*              0     1     2     3     4     5     6     7     8     9     A  */
++  /*  'A'   */
++  /* 0x0300 */	0xCB, 0xE7, 0xE5, 0xCC,  '?',  '?',  '?',  '?', 0x80,  '?', 0x81,
++
++  /*  'a'   */
++  /* 0x0300 */	0x88, 0x87, 0x89, 0x8B,  '?',  '?',  '?',  '?', 0x8A,  '?', 0x8C,
++
++  /*  'E'   */
++  /* 0x0300 */	0xE9, 0x83, 0xE6,  '?',  '?',  '?',  '?',  '?', 0xE8,  '?',  '?',
++
++  /*  'e'   */
++  /* 0x0300 */	0x8F, 0x8E, 0x90,  '?',  '?',  '?',  '?',  '?', 0x91,  '?',  '?',
++
++  /*  'I'   */
++  /* 0x0300 */	0xED, 0xEA, 0xEB,  '?',  '?',  '?',  '?',  '?', 0xEC,  '?',  '?',
++
++  /*  'i'   */
++  /* 0x0300 */	0x93, 0x92, 0x94,  '?',  '?',  '?',  '?',  '?', 0x95,  '?',  '?',
++
++  /*  'N'   */
++  /* 0x0300 */	 '?',  '?',  '?', 0x84,  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++
++  /*  'n'   */
++  /* 0x0300 */	 '?',  '?',  '?', 0x96,  '?',  '?',  '?',  '?',  '?',  '?',  '?',
++
++  /*  'O'   */
++  /* 0x0300 */	0xF1, 0xEE, 0xEF, 0xCD,  '?',  '?',  '?',  '?', 0x85,  '?',  '?',
++
++  /*  'o'   */
++  /* 0x0300 */	0x98, 0x97, 0x99, 0x9B,  '?',  '?',  '?',  '?', 0x9A,  '?',  '?',
++
++  /*  'U'   */
++  /* 0x0300 */	0xF4, 0xF2, 0xF3,  '?',  '?',  '?',  '?',  '?', 0x86,  '?',  '?',
++
++  /*  'u'   */
++  /* 0x0300 */	0x9D, 0x9C, 0x9E,  '?',  '?',  '?',  '?',  '?', 0x9F,  '?',  '?',
++
++  /*  'Y'   */
++  /* 0x0300 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xD9,  '?',  '?',
++
++  /*  'y'   */
++  /* 0x0300 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', 0xD8,  '?',  '?',
++
++  /*  else  */
++  /* 0x0300 */	 '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?'
++};
++
++
++/*
++ * Convert Unicode string into HFS MacRoman encoding
++ *
++ * Assumes Unicode input is fully decomposed
++ */
++int unicode_to_mac_roman(UniChar *uni_str, u_int32_t unicodeChars, Str31 hfs_str)
 +{
-+	return ENOTSUP;
++	u_int8_t	*p;
++	const UniChar	*u;
++	UniChar		c;
++	UniChar		mask;
++	u_int16_t	inputChars;
++	u_int16_t	pascalChars;
++	OSErr		result = noErr;
++	u_int8_t	lsb;
++	u_int8_t	prevChar;
++	u_int8_t	mc;
++
++	mask = (UniChar) 0xFF80;
++	p = &hfs_str[1];
++	u = uni_str;
++	inputChars = unicodeChars;
++	pascalChars = prevChar = 0;
++	
++	while (inputChars) {
++		c = *(u++);
++		lsb = (u_int8_t) c;
++
++		/*
++		 * If its not 7-bit ascii, then we need to map it
++		 */
++		if ( c & mask ) {
++			mc = '?';
++			switch (c & 0xFF00) {
++			case 0x0000:
++				if (lsb >= 0xA0)
++					mc = gLatin1Table[lsb - 0xA0];
++				break;
++
++			case 0x0200:
++				if (lsb >= 0xC0 && lsb <= 0xDF)
++					mc = gSpaceModsTable[lsb - 0xC0];
++				break;
++
++			case 0x2000:
++				if (lsb >= 0x10 && lsb <= 0xAF)
++					mc = gPunctTable[lsb- 0x10];
++				break;
++
++			case 0x2200:
++				if (lsb < 0x68)
++					mc = gMathTable[lsb];
++				break;
++
++			case 0x0300:
++				if (c <= 0x030A) {
++					if (prevChar >= 'A' && prevChar < 'z') {
++						mc = gReverseCombTable[gReverseCombTable[prevChar - 0x40] + lsb];
++						--p;	/* backup over base char */
++						--pascalChars;
++					}
++				} else {
++					switch (c) {
++					case 0x0327:	/* combining cedilla */
++						if (prevChar == 'C')
++							mc = 0x82;
++						else if (prevChar == 'c')
++							mc = 0x8D;
++						else
++							break;
++						--p;	/* backup over base char */
++						--pascalChars;
++						break;
++
++					case 0x03A9: mc = 0xBD; break;	/* omega */
++
++					case 0x03C0: mc = 0xB9; break;	/* pi */
++					}
++				}
++				break;
++				
++			default:
++				switch (c) {
++				case 0x0131: mc = 0xf5; break;	/* dotless i */
++
++				case 0x0152: mc = 0xce; break;	/* OE */
++
++				case 0x0153: mc = 0xcf; break;	/* oe */
++
++				case 0x0192: mc = 0xc4; break;	/* Ä */
++
++				case 0x2122: mc = 0xaa; break;	/* TM */
++
++				case 0x25ca: mc = 0xd7; break;	/* diamond */
++
++				case 0xf8ff: mc = 0xf0; break;	/* apple logo */
++
++				case 0xfb01: mc = 0xde; break;	/* fi */
++
++				case 0xfb02: mc = 0xdf; break;	/* fl */
++				}
++			} /* end switch (c & 0xFF00) */
++			
++			/*
++			 * If we have an unmapped character then we need to mangle the name...
++			 */
++			if (mc == '?')
++				result = kTECUsedFallbacksStatus;
++			
++			prevChar = 0;
++			lsb = mc;
++
++		} else {
++			prevChar = lsb;
++		}
++
++		if (pascalChars >= 31)
++			break;
++
++		*(p++) = lsb;
++		++pascalChars;
++		--inputChars;
++
++	} /* end while */
++	
++	hfs_str[0] = pascalChars;
++	
++	if (inputChars > 0)
++		result = ENAMETOOLONG;	/* ran out of room! */
++
++	return result;
 +}
 +
++
++static UniChar gHiBitBaseUnicode[128] = {
++  /* 0x80 */	0x0041, 0x0041, 0x0043, 0x0045, 0x004e, 0x004f, 0x0055, 0x0061, 
++  /* 0x88 */	0x0061, 0x0061, 0x0061, 0x0061, 0x0061, 0x0063, 0x0065, 0x0065, 
++  /* 0x90 */	0x0065, 0x0065, 0x0069, 0x0069, 0x0069, 0x0069, 0x006e, 0x006f, 
++  /* 0x98 */	0x006f, 0x006f, 0x006f, 0x006f, 0x0075, 0x0075, 0x0075, 0x0075, 
++  /* 0xa0 */	0x2020, 0x00b0, 0x00a2, 0x00a3, 0x00a7, 0x2022, 0x00b6, 0x00df, 
++  /* 0xa8 */	0x00ae, 0x00a9, 0x2122, 0x00b4, 0x00a8, 0x2260, 0x00c6, 0x00d8, 
++  /* 0xb0 */	0x221e, 0x00b1, 0x2264, 0x2265, 0x00a5, 0x00b5, 0x2202, 0x2211, 
++  /* 0xb8 */	0x220f, 0x03c0, 0x222b, 0x00aa, 0x00ba, 0x03a9, 0x00e6, 0x00f8, 
++  /* 0xc0 */	0x00bf, 0x00a1, 0x00ac, 0x221a, 0x0192, 0x2248, 0x2206, 0x00ab, 
++  /* 0xc8 */	0x00bb, 0x2026, 0x00a0, 0x0041, 0x0041, 0x004f, 0x0152, 0x0153, 
++  /* 0xd0 */	0x2013, 0x2014, 0x201c, 0x201d, 0x2018, 0x2019, 0x00f7, 0x25ca, 
++  /* 0xd8 */	0x0079, 0x0059, 0x2044, 0x20ac, 0x2039, 0x203a, 0xfb01, 0xfb02, 
++  /* 0xe0 */	0x2021, 0x00b7, 0x201a, 0x201e, 0x2030, 0x0041, 0x0045, 0x0041, 
++  /* 0xe8 */	0x0045, 0x0045, 0x0049, 0x0049, 0x0049, 0x0049, 0x004f, 0x004f, 
++  /* 0xf0 */	0xf8ff, 0x004f, 0x0055, 0x0055, 0x0055, 0x0131, 0x02c6, 0x02dc, 
++  /* 0xf8 */	0x00af, 0x02d8, 0x02d9, 0x02da, 0x00b8, 0x02dd, 0x02db, 0x02c7
++};
++
++static UniChar gHiBitCombUnicode[128] = {
++  /* 0x80 */	0x0308, 0x030a, 0x0327, 0x0301, 0x0303, 0x0308, 0x0308, 0x0301, 
++  /* 0x88 */	0x0300, 0x0302, 0x0308, 0x0303, 0x030a, 0x0327, 0x0301, 0x0300, 
++  /* 0x90 */	0x0302, 0x0308, 0x0301, 0x0300, 0x0302, 0x0308, 0x0303, 0x0301, 
++  /* 0x98 */	0x0300, 0x0302, 0x0308, 0x0303, 0x0301, 0x0300, 0x0302, 0x0308, 
++  /* 0xa0 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
++  /* 0xa8 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xb0 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xb8 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xc0 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xc8 */	0x0000, 0x0000, 0x0000, 0x0300, 0x0303, 0x0303, 0x0000, 0x0000, 
++  /* 0xd0 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xd8 */	0x0308, 0x0308, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
++  /* 0xe0 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0302, 0x0302, 0x0301, 
++  /* 0xe8 */	0x0308, 0x0300, 0x0301, 0x0302, 0x0308, 0x0300, 0x0301, 0x0302, 
++  /* 0xf0 */	0x0000, 0x0300, 0x0301, 0x0302, 0x0300, 0x0000, 0x0000, 0x0000, 
++  /* 0xf8 */	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
++};
++
++
++/*
++ * Convert HFS MacRoman encoded string into Unicode
++ *
++ * Unicode output is fully decomposed
++ */
 +int
-+hfs_backup_key(__unused aks_cred_t access, __unused const aks_wrapped_key_t wrapped_key_in,
-+    __unused aks_wrapped_key_t wrapped_key_out)
++mac_roman_to_unicode(const Str31 hfs_str, UniChar *uni_str,
++				__unused u_int32_t maxCharLen, u_int32_t *unicodeChars)
 +{
-+	return ENOTSUP;
++	const u_int8_t  *p;
++	UniChar  *u;
++	u_int16_t  pascalChars;
++	u_int8_t  c;
++
++	p = hfs_str;
++	u = uni_str;
++
++	*unicodeChars = pascalChars = *(p++);	/* pick up length byte */
++
++	while (pascalChars--) {
++		c = *(p++);
++
++		if ( (int8_t) c >= 0 ) {		/* check if seven bit ascii */
++			*(u++) = (UniChar) c;	/* just pad high byte with zero */
++		} else { /* its a hi bit character */
++			UniChar uc;
++
++			c &= 0x7F;
++			*(u++) = uc = gHiBitBaseUnicode[c];
++			
++			/*
++			 * if the unicode character we get back is an alpha char
++			 * then we must have an additional combining character
++			 */
++			if ((uc <= (UniChar) 'z') && (uc >= (UniChar) 'A')) {
++				*(u++) = gHiBitCombUnicode[c];
++				++(*unicodeChars);
++			}
++		}
++	}
++	
++	return noErr;
 +}
-+#endif /* CONFIG_PROTECT */
+diff --git a/bsd/hfs_encodings/hfs_encodings.h b/bsd/hfs_encodings/hfs_encodings.h
+new file mode 100644
+index 0000000..02b1336
+--- /dev/null
++++ b/bsd/hfs_encodings/hfs_encodings.h
+@@ -0,0 +1,89 @@
++/*
++ * Copyright (c) 2000-2015 Apple Inc. All rights reserved.
++ *
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
++ * 
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. The rights granted to you under the License
++ * may not be used to create, or enable the creation or redistribution of,
++ * unlawful or unlicensed copies of an Apple operating system, or to
++ * circumvent, violate, or enable the circumvention or violation of, any
++ * terms of an Apple operating system software license agreement.
++ * 
++ * Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this file.
++ * 
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ * 
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
++ */
++/*
++ * Copyright (c) 1997-2000 Apple Inc. All Rights Reserved
++ */
++
++#ifndef _HFS_ENCODINGS_H_
++#define _HFS_ENCODINGS_H_
++
++#if !TARGET_OS_IPHONE
++
++#include <sys/appleapiopts.h>
++
++#ifdef __APPLE_API_UNSTABLE
++
++#define CTL_HFS_NAMES { \
++	{ 0, 0 }, \
++	{ "encodingbias", CTLTYPE_INT }, \
++}
++
++__BEGIN_DECLS
++
++/*
++ * HFS Filename Encoding Converters Interface
++ *
++ * Private Interface for adding hfs filename
++ * encoding converters. These are not needed
++ * for HFS Plus volumes (since they already
++ * have Unicode filenames).
++ *
++ * Used by HFS Encoding Converter Kernel Modules
++ * to register their encoding conversion routines.
++ */
++
++typedef int (* hfs_to_unicode_func_t)(const uint8_t hfs_str[32], uint16_t *uni_str,
++		u_int32_t maxCharLen, u_int32_t *usedCharLen);
++
++typedef int (* unicode_to_hfs_func_t)(uint16_t *uni_str, u_int32_t unicodeChars,
++        uint8_t hfs_str[32]);
++
++int hfs_relconverter (u_int32_t encoding);
++int hfs_getconverter(u_int32_t encoding, hfs_to_unicode_func_t *get_unicode,
++					 unicode_to_hfs_func_t *get_hfsname);
++int hfs_addconverter(int kmod_id, u_int32_t encoding,
++					 hfs_to_unicode_func_t get_unicode,
++					 unicode_to_hfs_func_t get_hfsname);
++int hfs_remconverter(int kmod_id, u_int32_t encoding);
++
++u_int32_t hfs_pickencoding(const u_int16_t *src, int len);
++u_int32_t hfs_getencodingbias(void);
++void hfs_setencodingbias(u_int32_t bias);
++int mac_roman_to_utf8(const uint8_t hfs_str[32], uint32_t maxDstLen, uint32_t *actualDstLen,
++					  unsigned char* dstStr);
++int utf8_to_mac_roman(uint32_t srcLen, const unsigned char* srcStr, uint8_t dstStr[32]);
++int mac_roman_to_unicode(const uint8_t hfs_str[32], uint16_t *uni_str, u_int32_t maxCharLen, u_int32_t *usedCharLen);
++int unicode_to_mac_roman(uint16_t *uni_str, u_int32_t unicodeChars, uint8_t hfs_str[32]);
++
++__END_DECLS
++
++#endif /* __APPLE_API_UNSTABLE */
++
++#endif // !TARGET_OS_IPHONE
++
++#endif /* ! _HFS_ENCODINGS_H_ */
+diff --git a/bsd/hfs_encodings/hfs_encodings_internal.h b/bsd/hfs_encodings/hfs_encodings_internal.h
+new file mode 100644
+index 0000000..c885821
+--- /dev/null
++++ b/bsd/hfs_encodings/hfs_encodings_internal.h
+@@ -0,0 +1,41 @@
++/*
++ * Copyright (c) 2015 Apple Inc. All rights reserved.
++ *
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_START@
++ *
++ * This file contains Original Code and/or Modifications of Original Code
++ * as defined in and that are subject to the Apple Public Source License
++ * Version 2.0 (the 'License'). You may not use this file except in
++ * compliance with the License. The rights granted to you under the License
++ * may not be used to create, or enable the creation or redistribution of,
++ * unlawful or unlicensed copies of an Apple operating system, or to
++ * circumvent, violate, or enable the circumvention or violation of, any
++ * terms of an Apple operating system software license agreement.
++ *
++ * Please obtain a copy of the License at
++ * http://www.opensource.apple.com/apsl/ and read it before using this file.
++ *
++ * The Original Code and all software distributed under the License are
++ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
++ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
++ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
++ * Please see the License for the specific language governing rights and
++ * limitations under the License.
++ *
++ * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
++ */
++
++#ifndef hfs_encodings_internal_h
++#define hfs_encodings_internal_h
++
++#include <sys/cdefs.h>
++
++__BEGIN_DECLS
++
++void hfs_converterinit(void);
++void hfs_converterdone(void);
++
++__END_DECLS
++
++#endif /* hfs_encodings_internal_h */
 diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
 index fcb1643..7eefd68 100644
 --- a/bsd/kern/bsd_init.c
@@ -54604,7 +55572,7 @@ index ff8c5e3..b00da80 100644
  
  	/*
 diff --git a/bsd/kern/kern_exec.c b/bsd/kern/kern_exec.c
-index ef3971c..b2c6f28 100644
+index ef3971c..6171005 100644
 --- a/bsd/kern/kern_exec.c
 +++ b/bsd/kern/kern_exec.c
 @@ -1159,6 +1159,9 @@ SYSCTL_PROC(_vm, OID_AUTO, shared_region_control,
@@ -54738,7 +55706,7 @@ index ef3971c..b2c6f28 100644
  	if (persona) {
  		persona_put(persona);
  	}
-@@ -3148,8 +3208,73 @@ spawn_persona_adopt(proc_t p, struct _posix_spawn_persona_info *px_persona)
+@@ -3148,8 +3208,46 @@ spawn_persona_adopt(proc_t p, struct _posix_spawn_persona_info *px_persona)
  	 * the kauth with a different UID/GID combo
  	 */
  	persona = persona_lookup(px_persona->pspi_id);
@@ -54771,50 +55739,23 @@ index ef3971c..b2c6f28 100644
 +	 * process's own credential, so it stays as it was.
 +	 */
 +	if (persona == NULL) {
-+		kauth_cred_t cred = kauth_cred_proc_ref(p);
-+
-+		if (px_persona->pspi_flags & POSIX_SPAWN_PERSONA_UID) {
-+			cred = kauth_cred_setresuid(cred,
-+			    px_persona->pspi_uid,
-+			    px_persona->pspi_uid,
-+			    px_persona->pspi_uid,
-+			    KAUTH_UID_NONE);
-+		}
-+		if (px_persona->pspi_flags & POSIX_SPAWN_PERSONA_GID) {
-+			cred = kauth_cred_setresgid(cred,
-+			    px_persona->pspi_gid,
-+			    px_persona->pspi_gid,
-+			    px_persona->pspi_gid);
-+		}
-+		if (px_persona->pspi_flags & POSIX_SPAWN_PERSONA_GROUPS) {
-+			cred = kauth_cred_setgroups(cred,
-+			    px_persona->pspi_groups,
-+			    px_persona->pspi_ngroups,
-+			    px_persona->pspi_gmuid);
-+		}
-+
-+		__block kauth_cred_t new_cred = cred;
-+		__block uid_t old_ruid = KAUTH_UID_NONE;
-+		uid_t new_ruid = kauth_cred_getruid(cred);
-+
-+		(void)proc_update_label(p, true, ^kauth_cred_t (kauth_cred_t cur_cred) {
-+			old_ruid = kauth_cred_getruid(cur_cred);
-+			if (new_cred != cur_cred) {
-+			        kauth_cred_ref(new_cred);
-+			        kauth_cred_unref(&cur_cred);
-+			}
-+			return new_cred;
-+		});
-+		kauth_cred_unref(&cred);
-+		if (old_ruid != KAUTH_UID_NONE && old_ruid != new_ruid) {
-+			(void)chgproccnt(new_ruid, 1);
-+			(void)chgproccnt(old_ruid, -1);
-+		}
++		/*
++		 * hakios: there are no personas in this port -- nothing makes them, and
++		 * kpersona_find_by_type() answers "no such process" to everyone who asks. Darwin's own
++		 * programs get along without them, but a package manager becomes root by way of one: Sileo
++		 * asks posix_spawn for persona 99 with OVERRIDE and uid 0, and that is how it runs apt.
++		 *
++		 * ios17 TODO(port): 16.5's port set the uid, gid and groups on the new process's credential
++		 * here (kauth_cred_setresuid and friends) and kept chgproccnt() straight. XNU 17 has no
++		 * such setters on a real credential -- only kauth_cred_model_setuidgid()/-setgroups() on a
++		 * credential model -- so until the fallback is rebuilt on those, the spawn is allowed and
++		 * the credential is left as the parent's. Sileo's own apt/dpkg then run as mobile.
++		 */
 +		return 0;
  	}
  
  	return persona_proc_adopt(p, persona,
-@@ -5604,10 +5729,75 @@ bad:
+@@ -5604,10 +5702,75 @@ bad:
   * Note:	The argument and environment vectors are user space pointers
   *		to arrays of user space pointers.
   */
@@ -54890,7 +55831,7 @@ index ef3971c..b2c6f28 100644
  	int error = 0;
  	int     ptr_size = (imgp->ip_flags & IMGPF_WAS_64BIT_ADDR) ? 8 : 4;
  	int new_ptr_size = (imgp->ip_flags & IMGPF_IS_64BIT_ADDR) ? 8 : 4;
-@@ -5777,6 +5967,33 @@ exec_extract_strings(struct image_params *imgp)
+@@ -5777,6 +5940,33 @@ exec_extract_strings(struct image_params *imgp)
  		imgp->ip_envc++;
  	}
  
@@ -54924,7 +55865,7 @@ index ef3971c..b2c6f28 100644
  	/* Save space for envv[] NULL terminator */
  	if (imgp->ip_argspace < new_ptr_size) {
  		error = E2BIG;
-@@ -6648,8 +6865,24 @@ handle_mac_transition:
+@@ -6648,8 +6838,24 @@ handle_mac_transition:
  
  #endif  /* CONFIG_MACF */
  
@@ -54951,7 +55892,7 @@ index ef3971c..b2c6f28 100644
  	task_set_uniqueid(proc_task(p));
  
  	/*
-@@ -7571,6 +7804,11 @@ process_signature(proc_t p, struct image_params *imgp)
+@@ -7571,6 +7777,11 @@ process_signature(proc_t p, struct image_params *imgp)
  	}
  
  done:
@@ -81873,10 +82814,21 @@ index 83259eb..8864e5c 100644
  DOCONFDEPS += $(MASTERCONFDIR)/MASTER.$(DOCONF_ARCH_CONFIG_LC).$(CURRENT_MACHINE_CONFIG_LC)
  endif
 diff --git a/iokit/conf/files b/iokit/conf/files
-index 8ec70f0..7456a7c 100644
+index 8ec70f0..a420213 100644
 --- a/iokit/conf/files
 +++ b/iokit/conf/files
-@@ -80,6 +80,17 @@ iokit/Kernel/IOSubMemoryDescriptor.cpp			optional iokitcpp
+@@ -13,7 +13,9 @@ OPTIONS/mach_assert				optional mach_assert
+ ./DriverKit/OSObject.iig.cpp		optional iokitcpp
+ ./DriverKit/OSAction.iig.cpp		optional iokitcpp
+ ./DriverKit/IOService.iig.cpp		optional iokitcpp
+-./DriverKit/IOExtensiblePaniclog.iig.cpp    optional iokitcpp
++# (hakios) no iig implementation for this class on this port: see ios17/BUILD-STATUS.md
++## (hakios) no iig implementation for this class on this port: see ios17/BUILD-STATUS.md
++#./DriverKit/IOExtensiblePaniclog.iig.cpp    optional iokitcpp
+ ./DriverKit/IOUserClient.iig.cpp		optional iokitcpp
+ ./DriverKit/IOMemoryDescriptor.iig.cpp		optional iokitcpp
+ ./DriverKit/IOBufferMemoryDescriptor.iig.cpp		optional iokitcpp
+@@ -80,6 +82,17 @@ iokit/Kernel/IOSubMemoryDescriptor.cpp			optional iokitcpp
  iokit/Kernel/IOGuardPageMemoryDescriptor.cpp		optional iokitcpp
  
  iokit/Kernel/IOPlatformExpert.cpp			optional iokitcpp
@@ -81894,6 +82846,15 @@ index 8ec70f0..7456a7c 100644
  iokit/Kernel/IOPlatformIO.cpp				optional iokitcpp
  
  iokit/Kernel/IOCPU.cpp					optional iokitcpp
+@@ -87,7 +100,7 @@ iokit/Kernel/IOPlatformActions.cpp			optional iokitcpp
+ 
+ iokit/Kernel/IONVRAM.cpp				optional iokitcpp
+ 
+-iokit/Kernel/IOExtensiblePaniclog.cpp   optional iokitcpp
++##iokit/Kernel/IOExtensiblePaniclog.cpp   optional iokitcpp
+ 
+ iokit/Kernel/IODMAController.cpp			optional iokitcpp
+ iokit/Kernel/IOInterruptController.cpp			optional iokitcpp
 diff --git a/libkern/amfi/miniamfi.c b/libkern/amfi/miniamfi.c
 new file mode 100644
 index 0000000..d270c26
@@ -82706,7 +83667,7 @@ index ecfe441..c9432cf 100644
  }
  
 diff --git a/osfmk/arm/pmap/pmap.h b/osfmk/arm/pmap/pmap.h
-index 5906adf..0dd54a7 100644
+index 5906adf..473fb38 100644
 --- a/osfmk/arm/pmap/pmap.h
 +++ b/osfmk/arm/pmap/pmap.h
 @@ -116,7 +116,13 @@
@@ -82724,15 +83685,20 @@ index 5906adf..0dd54a7 100644
  #endif /* defined(ARM_LARGE_MEMORY) */
  
  typedef uint64_t tt_entry_t; /* translation table entry type */
-@@ -473,7 +479,7 @@ struct pmap {
- #if HAS_APPLE_PAC
+@@ -470,11 +476,9 @@ struct pmap {
+ 	/* The nesting bounds have been set. */
+ 	bool nested_bounds_set;
+ 
+-#if HAS_APPLE_PAC
++	/* (hakios) always a field: XNU 17 reads it in code that HAS_APPLE_PAC does not guard
++	 * (vm_map.c, vm_dyld_pager.c, vm_shared_region.c), and on this platform it is always 0. */
  	bool disable_jop;
- #else
+-#else
 -	bool reserved10;
-+	bool reserved12;
- #endif /* HAS_APPLE_PAC */
+-#endif /* HAS_APPLE_PAC */
  
  	bool reserved11;
+ 
 diff --git a/osfmk/arm64/corecrypto/arm64_isa_compatibility.h b/osfmk/arm64/corecrypto/arm64_isa_compatibility.h
 index b9549da..cca31ea 100644
 --- a/osfmk/arm64/corecrypto/arm64_isa_compatibility.h
@@ -85595,10 +86561,10 @@ index 81363c6..8f88617 100644
 +osfmk/minicrypto/mc_provider.c	standard
 +osfmk/minicrypto/mc_aes.c	standard
 diff --git a/osfmk/conf/files.arm64 b/osfmk/conf/files.arm64
-index ec6afb7..cb549f5 100644
+index ec6afb7..d106942 100644
 --- a/osfmk/conf/files.arm64
 +++ b/osfmk/conf/files.arm64
-@@ -25,11 +25,8 @@ osfmk/arm64/WKdmCompress_4k.s	standard
+@@ -25,11 +25,9 @@ osfmk/arm64/WKdmCompress_4k.s	standard
  osfmk/arm64/WKdmData.s		standard
  osfmk/arm64/lz4_decode_arm64.s  standard
  osfmk/arm64/lz4_encode_arm64.s  standard
@@ -85608,11 +86574,12 @@ index ec6afb7..cb549f5 100644
 -osfmk/arm64/amcc_rorgn_common.c optional nos_arm_asm
 -osfmk/arm64/bcopy.s standard
 +#osfmk/arm64/amcc_rorgn_ppl.c optional nos_arm_asm config_pmap_ppl
-+#osfmk/arm64/amcc_rorgn_common.c optional nos_arm_asmosfmk/arm64/bcopy.s standard
++#osfmk/arm64/amcc_rorgn_common.c optional nos_arm_asm
++osfmk/arm64/bcopy.s	standard
  osfmk/arm64/bzero.s standard
  osfmk/arm/caches.c		standard
  osfmk/arm64/caches_asm.s		optional nos_arm_asm
-@@ -107,3 +104,8 @@ osfmk/arm64/machine_remote_time.c optional config_mach_bridge_recv_time
+@@ -107,3 +105,8 @@ osfmk/arm64/machine_remote_time.c optional config_mach_bridge_recv_time
  osfmk/arm64/corecrypto/sha256_compress_arm64.s	standard
  
  osfmk/arm/counter.c	standard
@@ -85714,10 +86681,10 @@ index 50a49ca..c3018b2 100644
  #define KALLOC_TYPE_ASSERT_COMPATIBLE_POINTER(ptr, type) \
  	_Static_assert(KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type), \
 diff --git a/osfmk/kern/percpu.h b/osfmk/kern/percpu.h
-index 3e783c0..a66dc8a 100644
+index 3e783c0..09e63eb 100644
 --- a/osfmk/kern/percpu.h
 +++ b/osfmk/kern/percpu.h
-@@ -236,15 +236,20 @@ extern vm_offset_t other_percpu_base(int cpu_number);
+@@ -236,15 +236,19 @@ extern vm_offset_t other_percpu_base(int cpu_number);
   * @param it            the name of the iterator
   * @param name          the per-CPU variable name
   */
@@ -85733,13 +86700,13 @@ index 3e783c0..a66dc8a 100644
 -	    __base_ ## it = (typeof(it))__unsafe_forge_bidi_indexable(void *, \
 -	    percpu_base.start, percpu_base.end - percpu_base.start),          \
 -	    __end_ ## it = (typeof(it))((vm_address_t)__base_ ## it  + percpu_base.end - percpu_base.start); \
+-        \
 +	    __base_ ## it = (typeof(it))percpu_base.start, \
 +	    __end_ ## it = (typeof(it))percpu_base.end; \
-         \
  	    (it = (typeof(it))((vm_address_t)__base_ ## it + __PERCPU_ADDR(name)), \
 -	    __base_ ## it <= __end_ ## it); \
 -        \
-+	    (vm_address_t)__base_ ## it <= (vm_address_t)__end_ ## it); \        \
++	    (vm_address_t)__base_ ## it <= (vm_address_t)__end_ ## it); \
  	    __base_ ## it = (typeof(it))((vm_address_t)__base_ ## it + percpu_section_size()))
  
  #pragma mark - implementation details
@@ -87445,6 +88412,273 @@ index ab201e5..1576689 100644
  	uio_t auio;
  	int error;
  
+diff --git a/tools/lldbmacros/core/__pycache__/collections.cpython-314.pyc b/tools/lldbmacros/core/__pycache__/collections.cpython-314.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..f94640388049c567e315c95fe29e6f0e800665a1
+GIT binary patch
+literal 31620
+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
+
+literal 0
+HcmV?d00001
+
 diff --git a/tools/lldbmacros/core/syntax_checker.py b/tools/lldbmacros/core/syntax_checker.py
 index 05aba3b..0a05486 100755
 --- a/tools/lldbmacros/core/syntax_checker.py

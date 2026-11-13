@@ -13,14 +13,14 @@ iOS 16.5（`xnu-8796.121.2`, Darwin 22.5.0）**推进到 iOS 17.0.0（`xnu-10002
 |---|---|---|
 | 设备移植骨架（`device.conf`、`configs/`、`soc/`、`soc.args`） | **done** | 按上游工具与格式写成，`tools/check-port.py` 通过 |
 | 设备数据（DT、分区、固件、内存映射） | **done** | `docs/device-report.md`，真机只读采集 |
-| iOS 17.0.0 内核层（8796 → 10002 变基） | **partial** | 203 个文件、46 处冲突全部处理完并提交：`ios17/hakios-xnu-10002.1.13.patch`；**尚未编译过**（见下） |
-| 编译与启动 | **missing** | 需要 Linux + clang + theos SDK；本机是 Windows，只做到补丁层面 |
+| iOS 17.0.0 内核层（8796 → 10002 变基） | **partial** | 203 个文件、46 处冲突处理完并提交；**已在这台机器上编译链接出 arm64 内核**（15 MB，`ios17/BUILD-STATUS.md`），**未上机** |
+| 编译与启动 | **partial** | 编译：WSL2 + clang 21 + theos，`xnu-build.sh -k -j4` 链接成功；启动：未做（没有 boot image、没碰手机） |
 | 各硬件驱动（显示/触摸/UFS/GPU/Wi-Fi/音频/基带…） | **missing** | 上游驱动全是参考机（redwood/sc7280）的地址与芯片；逐项待写，见 `docs/port-checklist.md` |
 | UEFI | **partial** | **不用新写平台**：Mu-Silicium 已带 `kebabPkg`，而 kebab 就是这块板。已做内存映射比对（`docs/uefi-map-report.md`）；未构建、未启动，见 `uefi/README.md` |
 
-> 结论先说清楚：**现在还不能开机进 iOS 17**。内核"补丁层"的 17.0 变基是真的做完了（可复现），
-> 但没有编译环境、没有 UEFI 平台、没有一个 kona 驱动，所以"能启动"这一条不成立。
-> 上游自己的 redwood 也是逐个驱动做出来的，顺序见 `docs/port-checklist.md`。
+> 结论先说清楚：**内核编出来了，但还不能开机进 iOS 17**。17.0 的变基与编译都在真机上做过
+> （arm64 Mach-O，15 MB，`ios17/BUILD-STATUS.md`）；还没有的是 UEFI 的一次启动、一个 kona 驱动、
+> 以及 boot image。上游自己的 redwood 也是逐个驱动做出来的，顺序见 `docs/port-checklist.md`。
 
 ## 怎么用（在 Linux/WSL 里，配合上游公共仓库）
 

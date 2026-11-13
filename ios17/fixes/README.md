@@ -1,16 +1,21 @@
-# fixes/ — 变基之后、编译之前要打的补丁
+# fixes/ — 变基之后到"编得出来"之间的修正
 
-`ios17/hakios-xnu-10002.1.13.patch` 是把 16.5 的移植变基到 `xnu-10002.1.13` 的结果。它是**逐 hunk
-合并**出来的，编译器随后指出了几处合并对了语法、合并错了语义的地方。这里放这些修正。
+`ios17/hakios-xnu-10002.1.13.patch` 是 16.5 的移植变基到 `xnu-10002.1.13` 的结果，**现在已经包含**
+下面这些修正（在干净的 `xnu-10002.1.13` 上 `git apply --check` 通过，编出了 arm64 内核）。
+这里保留两样东西，作为"为什么"：
 
-| 文件 | 是什么 | 怎么用 |
-|---|---|---|
-| `pmap.h.patch` | `struct pmap` 里的两个 `reserved12`：17 自己加了一个 `uint8_t reserved12`，移植的 `#else bool reserved12` 又加一个。17 的 `vm_map.c`/`vm_dyld_pager.c`/`vm_shared_region.c` 在 `HAS_APPLE_PAC` 之外读 `disable_jop`，所以这个字段要无条件存在。里面还带着移植原有的 `BOOTSTRAP_TABLE_SIZE` 那一 hunk（那是 16.5 移植的一部分，不是这次修的） | 在 `ios17/apply.sh` 建出的树上：`git apply fixes/pmap.h.patch`，或者按它改；**或者**把它合进 `hakios-xnu-10002.1.13.patch` 里 pmap.h 的那一段，以后就不必单独打 |
+| 文件 | 是什么 |
+|---|---|
+| `TrustCache-API.h` | XNU 17 依赖、而任何 SDK 都没有的 `<TrustCache/API.h>`，按树里的用法重建（补丁里已放在 `EXTERNAL_HEADERS/TrustCache/API.h`）。单独留一份，是为了以后 Apple 放出真头时对照 |
+| `README.md` | 这个文件 |
 
-## 不在这里、但环境要有的两处（见 `BUILD-STATUS.md`）
+每条修正的原因、现象与修法在 `../BUILD-STATUS.md` 的表里；`pmap.h`、`files.arm64`、`percpu.h`、
+`hfs.h`、`kern_exec.c`、`iokit/conf/files` 的改动都已经在补丁里了。
 
-- `xnu-deps/host/bin/iig`：给 iOS 17 新增的 DriverKit 类生成 `#if KERNEL #include <IOKit/...>` 的包装头，
-  否则 `exporthdrs` 在 `IOExtensiblePaniclog` 上停住。包装头只够导出，**不够编译** —— 还缺 iig 生成的
-  类声明（`*_Impl` 方法），这是 `BUILD-STATUS.md` 的卡点 2。
-- `xnu-deps/setup.sh --stage2` 要 `RC_DARWIN_KERNEL_VERSION=10002.1.13`，因为 SDK overlay 还是
-  16.5 的 System.kext。
+## 不在补丁里、属于环境的
+
+- **macOS 14.5 SDK 的 `DriverKit/*.h`（35 个）**：XNU 17 新增的 DriverKit 类（`IOExtensiblePaniclog`）
+  不在 13.3 SDK 里，从 14.5 的 `Kernel.framework/Headers/DriverKit/` 拷进 13.3 SDK。
+- **`xnu-deps/host/bin/iig`**：给没有预生成头的类，从 `.iig` 的 `#if KERNEL #include <IOKit/...>`
+  生成包装头。
+- **`RC_DARWIN_KERNEL_VERSION=10002.1.13`**：SDK overlay 的 System.kext 还是 16.5 的版本号。
