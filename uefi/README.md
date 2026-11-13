@@ -53,6 +53,26 @@ cd ..
 **下一步**：WSL 恢复后，用 `build_uefi.py -d kebab -s`（跳过外部依赖检查）配合一个干净的 BASE 树再试；
 再不行就把 `libspdm` 子树从 submodule 里摘掉（SPDM 与 kebab 的启动无关）。
 
+### 后来的进展（同一天，第二轮）
+
+- HakiOS 的 UEFI（Mu-Silicium 在 `BASE` + `hakios.patch` + `files/`）**编出来了**：`uefi-kebab-hakios.fd`
+  （3 145 728 字节）。办法是跳过 `edk2toolext` 的外部依赖校验（`libspdm` 子模块里的 openssl/mbedtls
+  commit 已从上游消失，`stuart_update` 永远过不去）。
+- 打了补丁的 FD 与三个 boot image 变体（`--header_version 1` + DTB、`--header_version 2` + `--dtb`、
+  不带 DTB）都试过 `fastboot boot`，**屏幕一直是黑的**，随后进 900E。
+- **一个重要的观察**：ABL 会说 `Failed to load/authenticate boot image: Load Error`。这个错误和镜像
+  内容无关 —— 同一个被接受过的镜像，在几次 900E 之后也会被拒绝。也就是说它反映的是 **ABL/设备的
+  状态**（上一次崩溃留下的标志），不是镜像格式。要重新试，得先把手机完整重启一次。
+- 二分用的最小镜像（内核只有 `b .` 两条指令）也准备好了：`xnu-stub-dtb.img`。它的用途是：如果它能
+  被接受并且**不再**进 900E（黑屏但一直开着），就说明 ABL→我们镜像的交接是好的，崩的是 UEFI；
+  反之则崩在交接之前。
+
+**下一轮的顺序**（手机每次重启后试一个，记录"黑屏/900E/是否还活着"）：
+
+1. `xnu-hakios-nopayload-v1dtb.img`（只有 UEFI，没有 XNUP payload）—— 判断 UEFI 本身能不能跑。
+2. `xnu-stub-dtb.img`（只有 `b .`）—— 判断交接本身。
+3. `xnu-oneplus8t-hakios.img`（完整：UEFI + loader）—— 前两个都活着时才轮到它。
+
 ## 内存映射：kebab 的 vs 本机设备树
 
 `tools/check-uefi-map.py` 把两边逐段比较（`docs/uefi-map-report.md` 是这次运行的完整输出）：
