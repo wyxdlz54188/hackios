@@ -152,6 +152,29 @@ WSL 出网走 Windows 主机的代理：`export https_proxy=http://192.168.1.5:7
 `fastboot boot xnu-oneplus8t.img`。期望看到 HakiOS logo 或至少 loader 的日志路径；若还进 900E，
 按上面"二分"一节的顺序排查。
 
+### 二分的第二个结果：崩在 XnuLoaderMain 之前（2026-11-13 晚）
+
+修好 `PayloadWindowMapped()` + payload 条目名 `loader.efi` + 进度标记之后重新编译、上机：
+
+- **带 loader 的镜像**：`Booting OKAY` → `????????????` 的 fastboot 出现 1 秒 → 900E，黑屏。
+- **不带 payload 的镜像**（关键对照）：也 900E，黑屏。
+- 回 Android 读 `logdump` 分区：**没有任何标记/日志**（只有 `ff fe` 头 + 全零）。
+
+结论（按"分区全零 → loader 没跑起来"的判据）：**崩溃发生在 UEFI 的 DXE 启动阶段、XnuLoaderMain 之前**，
+即 Mu-Silicium 的 kebab 平台在这台机器上还没走到启动管理器就崩了（黑屏 = 显示从没初始化）。原版
+Mu-Silicium 也一样崩，所以**不是 HakiOS 的补丁/loader 的问题**，是平台与本机不匹配。
+
+设备身份（从 `prebuilt/device-tree.dtb` 读的）：`model = kona MTP 19805`、`oplus,dtsi_no = 0x4d5d (19805)`、
+`qcom,board-id = 1, 8`。`19805` 是 OnePlus 项目号（8T = kebab 家族），但 Mu-Silicium 的 kebab 平台是以
+某个特定内存/DDR/面板的 8T 为基准的；这台 12 GB 的 KB2000 疑似在 DDR/显示/内存映射上有差异，导致某个
+厂商 DXE 驱动在启动早期就 fault。
+
+**下一步要换工具**（盲试到此为止，需要一个能"看见早期崩溃"的手段）：
+
+1. 给 Mu-Silicium 的 **Sec/最早的 DXE 驱动** 加标记（往固定物理地址或 UFS 写字节），把二分往下再推一层；
+2. 或者上 **串口/UART**（kona UART `0xa90000`，需要拆机引线）；
+3. 或者查 Mu-Silicium 对 **KB2000 / 12 GB** 的已知问题、换一个更接近本机的平台包。
+
 ## 内存映射：kebab 的 vs 本机设备树
 
 `tools/check-uefi-map.py` 把两边逐段比较（`docs/uefi-map-report.md` 是这次运行的完整输出）：
