@@ -44,7 +44,7 @@ launchd 起来，然后自己结束、手机回到 Android。
 
 | 序 | 部件 | 这台机器的实际情况 | 要做的事 |
 |---|---|---|---|
-| 1 | `CPUFREQ` `THERMAL` `SOCINFO` | kona 的 EPSS 与 thermal 地址；参考机是 sc7280 的 | 新写 kona 版；thermal 的 30+ 个 zone 从本机 DT 的 `thermal-zones` 抄 |
+| 1 | `CPUFREQ` `THERMAL` `SOCINFO` | 地址与上游驱动**一致**：EPSS `0x18591000` 三域、TSENS TM `0xc263000`/`0xc265000`、SMEM `0x80900000`（`docs/kona-soc-facts.md`） | `CPUFREQ`/`SOCINFO` 不用改；`THERMAL` **只换传感器表**（`soc/thermal/kona-thermal-table.h`，25 个，`tools/dt-thermal.py` 从本机 DT 生成） |
 | 2 | `BUTTONS` | `qpnp_pon` + `gpio-keys` + 霍尔 | 改 PMIC 寄存器地址（PM8150 系列与参考机不同） |
 | 3 | 触摸 | **Synaptics S3908**（i2c `0xa94000`，`0x4B`） | 上游只有 Goodix/FocalTech，**要新写 `hakios.synaptics.c`**；寄存器手册与初始化表从本机 `libpanel`/内核取 |
 | 4 | `UFS` | UFS 3.1，`1d84000.ufshc` | 上游 `hakios.ufs.c`/`ufshc.c` 是 sc7280 的 UFSHC 基址，改基址与 PHY 表后只读验证 |

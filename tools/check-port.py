@@ -177,6 +177,29 @@ def main():
     else:
         bad("prebuilt/device-tree.dtb is missing (adb pull /sys/firmware/fdt)")
 
+    # soc/thermal/kona-thermal-table.h: is it still what the tool makes from this tree?
+    table = os.path.join(root, "soc", "thermal", "kona-thermal-table.h")
+    if os.path.isfile(table) and os.path.isfile(dtb):
+        import subprocess
+        tool = os.path.join(root, "tools", "dt-thermal.py")
+        run = subprocess.run([sys.executable, tool, dtb, "--c"], capture_output=True, text=True)
+        if run.returncode:
+            bad("tools/dt-thermal.py failed: " + (run.stderr or "").strip()[:200])
+        else:
+            row = re.compile(r'\{\s*"([^"]+)",\s*(0x[0-9a-fA-F]+),\s*(\d+),\s*(-?\d+),\s*(-?\d+)\s*\}')
+            want = row.findall(run.stdout)
+            have = row.findall(open(table, encoding="utf-8").read())
+            if not have:
+                bad("soc/thermal/kona-thermal-table.h: no rows read")
+            elif want != have:
+                only_want = [r for r in want if r not in have]
+                only_have = [r for r in have if r not in want]
+                bad("soc/thermal/kona-thermal-table.h differs from what this tree gives: %d row(s) missing, "
+                    "%d row(s) extra (first missing: %s)" % (len(only_want), len(only_have),
+                                                             only_want[0][0] if only_want else "-"))
+            else:
+                notes.append("soc/thermal/kona-thermal-table.h: %d sensors, same as tools/dt-thermal.py makes" % len(have))
+
     # ios17/
     patch = os.path.join(root, "ios17", "hakios-xnu-10002.1.13.patch")
     if os.path.isfile(patch):
