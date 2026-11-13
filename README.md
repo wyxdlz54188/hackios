@@ -16,7 +16,7 @@ iOS 16.5（`xnu-8796.121.2`, Darwin 22.5.0）**推进到 iOS 17.0.0（`xnu-10002
 | iOS 17.0.0 内核层（8796 → 10002 变基） | **partial** | 203 个文件、46 处冲突全部处理完并提交：`ios17/hakios-xnu-10002.1.13.patch`；**尚未编译过**（见下） |
 | 编译与启动 | **missing** | 需要 Linux + clang + theos SDK；本机是 Windows，只做到补丁层面 |
 | 各硬件驱动（显示/触摸/UFS/GPU/Wi-Fi/音频/基带…） | **missing** | 上游驱动全是参考机（redwood/sc7280）的地址与芯片；逐项待写，见 `docs/port-checklist.md` |
-| UEFI（Mu-Silicium 的 kona 平台） | **missing** | 未做；`docs/port-checklist.md` 第 0 步 |
+| UEFI | **partial** | **不用新写平台**：Mu-Silicium 已带 `kebabPkg`，而 kebab 就是这块板。已做内存映射比对（`docs/uefi-map-report.md`）；未构建、未启动，见 `uefi/README.md` |
 
 > 结论先说清楚：**现在还不能开机进 iOS 17**。内核"补丁层"的 17.0 变基是真的做完了（可复现），
 > 但没有编译环境、没有 UEFI 平台、没有一个 kona 驱动，所以"能启动"这一条不成立。
@@ -56,6 +56,7 @@ Apple 在 BSD/VFS、pmap、调度、persona、jetsam 上都动了。`ios17/REBAS
 | `soc/` | SM8250 (kona) 的 SoC 层：`soc.conf`、`configs/sm8250.config` |
 | `soc.args` | 从本机 DT 读出的 modem/IPA/SMEM 地址，`tools/soc-args-kona.py` 生成 |
 | `ios17/` | iOS 17.0.0 目标：版本钉死、变基报告、补丁、复现脚本 |
+| `uefi/` | UEFI 这边：本机为什么是 Mu-Silicium 的 kebab、怎么建、内存映射比对的结论 |
 | `docs/` | 真机数据报告、移植清单（按上游的驱动顺序） |
 | `tools/` | 只读采集、kona 版 soc-args、仓库自检 |
 | `prebuilt/device-tree.dtb` | 本机 `/sys/firmware/fdt`（787 882 字节），soc.args 的来源 |

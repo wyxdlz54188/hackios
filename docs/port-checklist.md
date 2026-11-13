@@ -3,21 +3,21 @@
 顺序沿用上游 `docs/porting/index.md`：**先能启动，再一个部件一个部件地做**。每一步都写了"做完了怎么算"，
 没做到的不要标 `works`（`device.conf` 的 status 是唯一状态来源）。
 
-## 第 0 步：UEFI（Mu-Silicium 的 kona 平台）
+## 第 0 步：UEFI —— 不写平台，先验证已有的 kebab
 
-HakiOS 的启动链是 `fastboot boot` → UEFI（Mu-Silicium 改）→ loader → XNU。SM8250 是 Mu-Silicium
-支持过的 SoC 家族（OnePlus 8/8T/8 Pro 都在其目标列表里），但**本仓库还没有 kona 的平台目录**。
+Mu-Silicium 已经带 `Platforms/OnePlus/kebabPkg`，而**本机就是 kebab 板**（KB2000 8T：指纹
+`OnePlus/OnePlus8T_CH/OnePlus8T`、面板 `amb655x`、地址逐段对得上）。所以这一步不是"写平台"，是"验证"。
+完整论证、比对输出和两个值得盯的内存窗口在 `uefi/README.md` 与 `docs/uefi-map-report.md`。
 
-- [ ] 建 `uefi/files/Platforms/OnePlus/instantnoodlePkg/`（照 `hakios-sm7325` 的 `redwoodPkg` 结构：
-      `.dec`/`.dsc`/`.fdf` + `ConfigurationMapLib` + `MemoryMapLib`）
-- [ ] `uefi/files/Resources/Configs/instantnoodle.toml` 和 `DTBs/instantnoodle.dtb`（DTB 用本机 `prebuilt/device-tree.dtb`）
-- [ ] `uefi/files/Binaries/instantnoodle/`：厂商 UEFI 驱动，**自己从自己手机取，不进仓库**
-- [ ] `uefi/apply.sh` 能跑通，产出 `prebuilt/SILICIUM_UEFI.fd` 和 `BootShim.bin`
+- [x] 把本机设备树拉下来，与 kebab 的 `MemoryMapLib.c` 逐段比对（`tools/check-uefi-map.py`）
+- [ ] 在 Linux 上 `uefi/apply.sh`（= `uefi/apply.sh kebab`）+ `build_uefi.py -d kebab -r RELEASE`
+- [ ] `./xl enter`，确认 `./xl screenshot` 有 HakiOS logo、`./xl log` 有 UEFI 第一行日志
 
-**算完的标志**：`./xl enter` 之后手机屏幕出现 HakiOS 的 logo，`./xl screenshot` 能截到 framebuffer，
-`./xl log` 有 loader 的 banner。
+**算完的标志**：屏幕出现 logo，loader banner 出来。若卡在写日志/堆：先把 kebab 的 `DXE Heap` 从
+`0xB0000000 +69 MB` 挪到 `0xB0400000 +65 MB`（避开本机的 `ramoops@0xB0000000 +4 MB`），再试。
 
-> 本机有个现成的好处：`uefivarstore` 分区（`sde59`）存在，OnePlus 的 UEFI 变量存储是现成的。
+> 注意别被 `ro.boot.project_codename=instantnoodle` 引到 OnePlus 8 的平台上去 —— 那是 ABL 报的板族名，
+> 市场名与指纹才是 8T。
 
 ## 第 1 步：仓库与配置（本仓库已经做完）
 
