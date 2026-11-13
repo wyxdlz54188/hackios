@@ -72,7 +72,10 @@ def payload_entries(data):
 if args.loader:
     if not os.path.isfile(args.loader):
         sys.exit(f'mkimg: no {args.loader}')
-    payload = xnup([('loader.efi', open(args.loader, 'rb').read())])
+    # after the loader entry, a "usb" marker entry: without it the loader takes its one-shot path
+    # (run the payload's kernel) instead of staying resident for xl -- and with no kernel in the
+    # payload that path walks into the weeds (xnuloader/loader.c parse_payload, pi.usb_mode)
+    payload = xnup([('loader.efi', open(args.loader, 'rb').read()), ('usb', b'1\0')])
     payload_path = os.path.join('/tmp', 'usb-payload.bin') if os.path.isdir('/tmp') else args.output + '.payload'
     open(payload_path, 'wb').write(payload)
     print(f'mkimg: payload {len(payload)} bytes (loader.efi <- {args.loader})')
